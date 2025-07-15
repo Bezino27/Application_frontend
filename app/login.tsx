@@ -19,6 +19,18 @@ interface Club {
   description?: string;
 }
 
+interface UserDetails {
+  username: string;
+  name: string;
+  birth_date: string;
+  number: string;
+  email: string;
+  email_2?: string;
+  height?: string;
+  weight?: string;
+  side?: string;
+}
+
 export default function LoginScreen() {
   const router = useRouter();
   const { login, isLoggedIn } = useContext(AuthContext);
@@ -36,6 +48,7 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     setLoading(true);
     setError(null);
+    
 
     try {
       // 1. Požiadavka na získanie tokenu
@@ -61,14 +74,26 @@ export default function LoginScreen() {
       }
 
       const meData = await meResponse.json();
-
+      const details: UserDetails = {
+        username: meData.username,
+        name: meData.name,
+        birth_date: meData.birth_date,
+        number: meData.number,
+        email: meData.email,
+        email_2: meData.email_2,
+        height: meData.height,
+        weight: meData.weight,
+        side: meData.side,
+      };
       // 3. Typovanie a bezpečné načítanie klubu
+
       const club: Club | null = meData.club ?? null;
       const roles: string[] = Array.isArray(meData.roles) ? meData.roles : [];
-
+      const categories: string[] = Array.isArray(meData.assigned_categories) ? meData.assigned_categories : [];
+      console.log('meData:', meData);
       // 4. Zavolanie login z AuthContext
-      await login(data.access, data.refresh, club, roles);
-
+      // Zavolanie login z AuthContext
+      await login(data.access, data.refresh, club, roles, categories, details);
       // 5. Presmerovanie po úspešnom prihlásení
       router.replace('/select-role');
     } catch (e: any) {
@@ -78,15 +103,14 @@ export default function LoginScreen() {
     }
   };
 
+
+
+
+
+
+
   return (
-    <ImageBackground
-      source={{
-        uri:
-          'https://images.unsplash.com/photo-1542751110-97427bbecf20?auto=format&fit=crop&w=1280&q=80',
-      }}
-      style={styles.background}
-      blurRadius={2}
-    >
+
       <View style={styles.container}>
         <Text style={styles.title}>Vitaj späť 👋</Text>
         <Text style={styles.subtitle}>Prihlás sa do systému</Text>
@@ -118,7 +142,6 @@ export default function LoginScreen() {
           </TouchableOpacity>
         )}
       </View>
-    </ImageBackground>
   );
 }
 

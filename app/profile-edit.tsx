@@ -1,12 +1,13 @@
 import React, { useContext, useState } from "react";
-import { View, Text, TextInput, Button, Alert, ScrollView } from "react-native";
+import { SafeAreaView, StyleSheet, ScrollView, Text, View, TextInput, Button, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { AuthContext } from "../context/AuthContext";
 import { BASE_URL } from "../hooks/api";
 
 export default function ProfileEditScreen() {
   const router = useRouter();
-  const { userDetails, accessToken,setUserDetails } = useContext(AuthContext);
+  const { userDetails, accessToken, setUserDetails } = useContext(AuthContext);
+
   const [username, setuserName] = useState(userDetails?.username || "");
   const [email, setEmail] = useState(userDetails?.email || "");
   const [email2, setEmail2] = useState(userDetails?.email_2 || "");
@@ -15,84 +16,142 @@ export default function ProfileEditScreen() {
   const [weight, setWeight] = useState(userDetails?.weight || "");
   const [side, setSide] = useState(userDetails?.side || "");
   const [number, setNumber] = useState(userDetails?.number || "");
-  
 
-const handleSave = async () => {
-  try {
-    const res = await fetch(`${BASE_URL}/me/`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({
-        username,
-        email,
-        email_2: email2,
-        birth_date: birthDate,
-        height,
-        weight,
-        side,
-        number,
-      }),
-    });
+  const handleSave = async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/me/`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          username,
+          email,
+          email_2: email2,
+          birth_date: birthDate,
+          height,
+          weight,
+          side,
+          number,
+        }),
+      });
 
-    if (!res.ok) throw new Error("Nepodarilo sa uložiť údaje");
+      if (!res.ok) throw new Error("Nepodarilo sa uložiť údaje");
 
-    // 🔁 Tu načítaj čerstvé údaje z GET /me/
-    const refreshedRes = await fetch(`${BASE_URL}/me/`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+      const refreshedRes = await fetch(`${BASE_URL}/me/`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
 
-    if (!refreshedRes.ok) throw new Error("Nepodarilo sa načítať nové údaje");
+      if (!refreshedRes.ok) throw new Error("Nepodarilo sa načítať nové údaje");
 
-    const freshUserData = await refreshedRes.json();
-    setUserDetails(freshUserData); // 👈 aktualizuj v kontexte
+      const freshUserData = await refreshedRes.json();
+      setUserDetails(freshUserData);
 
-    Alert.alert("Úspech", "Údaje boli uložené");
-    router.back();
-  } catch (e) {
-    Alert.alert("Chyba", "Skontroluj údaje alebo spojenie");
-    console.error(e);
-  }
-};
+      Alert.alert("Úspech", "Údaje boli uložené");
+      router.back();
+    } catch (e) {
+      Alert.alert("Chyba", "Skontroluj údaje alebo spojenie");
+      console.error(e);
+    }
+  };
 
-  return (
-    <ScrollView contentContainerStyle={{ padding: 20 }}>
-      <Text>username:</Text>
-      <TextInput value={username} onChangeText={setuserName} style={inputStyle} />
+return (
+  <SafeAreaView style={styles.safeArea}>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.header}>Úprava profilu</Text>
 
-      <Text>Email:</Text>
-      <TextInput value={email} onChangeText={setEmail} style={inputStyle} />
+      <View style={styles.field}>
+        <Text style={styles.label}>Používateľské meno</Text>
+        <TextInput value={username} onChangeText={setuserName} style={styles.input} />
+      </View>
 
-      <Text>Email 2:</Text>
-      <TextInput value={email2} onChangeText={setEmail2} style={inputStyle} />
+      <View style={styles.field}>
+        <Text style={styles.label}>Email</Text>
+        <TextInput value={email} onChangeText={setEmail} style={styles.input} keyboardType="email-address" />
+      </View>
 
-      <Text>Dátum narodenia:</Text>
-      <TextInput value={birthDate} onChangeText={setBirthDate} style={inputStyle} />
+      <View style={styles.field}>
+        <Text style={styles.label}>Alternatívny email</Text>
+        <TextInput value={email2} onChangeText={setEmail2} style={styles.input} keyboardType="email-address" />
+      </View>
 
-      <Text>Výška:</Text>
-      <TextInput value={height} onChangeText={setHeight} style={inputStyle} keyboardType="numeric" />
+      <View style={styles.field}>
+        <Text style={styles.label}>Dátum narodenia</Text>
+        <TextInput value={birthDate} onChangeText={setBirthDate} style={styles.input} placeholder="RRRR-MM-DD" />
+      </View>
 
-      <Text>Váha:</Text>
-      <TextInput value={weight} onChangeText={setWeight} style={inputStyle} keyboardType="numeric" />
+      <View style={styles.inlineFields}>
+        <View style={styles.halfField}>
+          <Text style={styles.label}>Výška (cm)</Text>
+          <TextInput value={height} onChangeText={setHeight} style={styles.input} keyboardType="numeric" />
+        </View>
+        <View style={styles.halfField}>
+          <Text style={styles.label}>Váha (kg)</Text>
+          <TextInput value={weight} onChangeText={setWeight} style={styles.input} keyboardType="numeric" />
+        </View>
+      </View>
 
-      <Text>Strana hokejky:</Text>
-      <TextInput value={side} onChangeText={setSide} style={inputStyle} />
+      <View style={styles.field}>
+        <Text style={styles.label}>Strana držania hokejky</Text>
+        <TextInput value={side} onChangeText={setSide} style={styles.input} placeholder="ľavá / pravá" />
+      </View>
 
-      <Text>Číslo na drese:</Text>
-      <TextInput value={number} onChangeText={setNumber} style={inputStyle} />
+      <View style={styles.field}>
+        <Text style={styles.label}>Číslo na drese</Text>
+        <TextInput value={number} onChangeText={setNumber} style={styles.input} keyboardType="numeric" />
+      </View>
 
-      <Button title="Uložiť" onPress={handleSave} />
+      <View style={styles.buttonWrapper}>
+        <Button title="💾 Uložiť" onPress={handleSave} color="#007AFF" />
+      </View>
     </ScrollView>
-  );
+  </SafeAreaView>
+);
 }
 
-const inputStyle = {
-  backgroundColor: "#eee",
-  marginBottom: 10,
-  padding: 10,
-  borderRadius: 5,
-};
+const styles = StyleSheet.create({
+  container: {
+    padding: 24,
+    backgroundColor: "#f9f9f9",
+  },
+  header: {
+    fontSize: 24,
+    fontWeight: "700",
+    marginBottom: 24,
+    textAlign: "center",
+  },
+  field: {
+    marginBottom: 16,
+  },
+  inlineFields: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  halfField: {
+    flex: 1,
+  },
+  label: {
+    fontWeight: "600",
+    marginBottom: 6,
+    color: "#333",
+  },
+  input: {
+    backgroundColor: "#fff",
+    padding: 12,
+    borderRadius: 8,
+    borderColor: "#ddd",
+    borderWidth: 1,
+  },
+  buttonWrapper: {
+    marginTop: 24,
+  },
+  safeArea: {
+  flex: 1,
+  backgroundColor: "#f9f9f9",
+  },
+
+});

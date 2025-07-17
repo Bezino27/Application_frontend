@@ -1,112 +1,145 @@
-import React, { useState, useContext } from "react";
-import { View, Text, TextInput, Button, StyleSheet, Alert } from "react-native";
+import React, { useState, useEffect, useContext } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  Button,
+  Alert,
+  Platform,
+  ScrollView,
+} from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
-import { AuthContext } from "../../context/AuthContext"; // podľa tvojej štruktúry
 import { BASE_URL } from "@/hooks/api";
+import { useFetchWithAuth } from "@/hooks/fetchWithAuth";
+import { AuthContext } from "@/context/AuthContext";
 
-const CreateTrainingScreen = () => {
+
+export default function CreateTrainingScreen() {
+  const { fetchWithAuth } = useFetchWithAuth();
   const router = useRouter();
-  const { accessToken, userClub } = useContext(AuthContext);
 
-  const [date, setDate] = useState("");
-  const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
-  const [categoryId, setCategoryId] = useState("");
+  const [location, setLocation] = useState("");
+  const [categoryId, setCategoryId] = useState<number | null>(null);
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
+  const [date, setDate] = useState(new Date());
+  const [showPicker, setShowPicker] = useState(false);
+  const { userClub } = useContext(AuthContext);
 
-  const handleCreate = async () => {
-    if (!categoryId || !date || !location) {
-      Alert.alert("Chyba", "Vyplň všetky povinné polia (kategória, dátum, miesto).");
-      return;
-    }
-
-    if (!accessToken || !userClub) {
-      Alert.alert("Chyba", "Nie ste prihlásený alebo nemáte nastavený klub.");
-      return;
-    }
-
+  useEffect(() => {
+  const fetchCategories = async () => {
     try {
-const response = await fetch(
-  `http://127.0.0.1:8000/api/clubs/${userClub.id}/trainings/create/`,
-  {
-    method: "POST",
-headers: {
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${accessToken}`,
-},
-    body: JSON.stringify({
-      category: categoryId,  // sem patrí categoryId
-      date,
-      location,
-      description,
-    }),
-  }
-);
+      if (!userClub?.id) return;
 
-      if (response.ok) {
-        const createdTraining = await response.json();
-        Alert.alert("Úspech", "Tréning bol vytvorený!");
-        router.back();
-      } else {
-        const error = await response.json();
-        console.error(error);
-        Alert.alert("Chyba", error.detail || "Nepodarilo sa vytvoriť tréning");
+      const res = await fetchWithAuth(`${BASE_URL}/categories/${userClub.id}/`);
+      if (!res.ok) throw new Error("Chyba pri načítaní kategórií");
+      const data = await res.json();
+      setCategories(data);
+    } catch (err) {
+      console.error("CHYBA PRI NAČÍTANÍ KATEGÓRIÍ:", err);
+      Alert.alert("Chyba", "Nepodarilo sa načítať kategórie.");
+    }
+  };
+
+  fetchCategories();
+}, [userClub]);
+  const handleSubmit = async () => {
+    try {
+      if (!description || !location || !categoryId) {
+        Alert.alert("Chyba", "Vyplň všetky povinné polia");
+        return;
       }
-    } catch (error) {
-      console.error(error);
-      Alert.alert("Chyba", "Nepodarilo sa spojiť so serverom");
+
+      const isoDate = date.toISOString();
+
+      const res = await fetchWithAuth(`${BASE_URL}/trainings/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          description,
+          location,
+          category: categoryId,
+          date: isoDate,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Chyba pri vytváraní tréningu");
+
+      Alert.alert("Úspech", "Tréning bol vytvorený");
+      router.back();
+    } catch (err) {
+      console.error("CHYBA PRI VYTVORENÍ TRÉNINGU:", err);
+      Alert.alert("Chyba", "Skontroluj údaje alebo spojenie.");
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.label}>Dátum (YYYY-MM-DDTHH:MM):</Text>
-      <TextInput
-        style={styles.input}
-        value={date}
-        onChangeText={setDate}
-        placeholder="2025-06-26T18:00"
-      />
+    <ScrollView contentContainerStyle={{ padding: 20 }}>
+      <Text style={{ fontWeight: "bold", fontSize: 20, marginBottom: 10 }}>
+        Vytvoriť tréning
+      </Text>
 
-      <Text style={styles.label}>Miesto:</Text>
-      <TextInput
-        style={styles.input}
-        value={location}
-        onChangeText={setLocation}
-        placeholder="Telocvičňa ZŠ..."
-      />
+      <Text>Kategória:</Text>
+      <View style={inputStyle}>
+        <Picker
+          selectedValue={categoryId}
+          onValueChange={(value) => setCategoryId(value)}
+        >
+          <Picker.Item label="Vyber kategóriu..." value={null} />
+          {categories.map((cat) => (
+            <Picker.Item key={cat.id} label={cat.name} value={cat.id} />
+          ))}
+        </Picker>
+      </View>
 
-      <Text style={styles.label}>Popis (nepovinné):</Text>
+      <Text>Popis tréningu:</Text>
       <TextInput
-        style={styles.input}
+        style={inputStyle}
         value={description}
         onChangeText={setDescription}
-        placeholder="Tréning techniky..."
+        placeholder="napr. Kondičný tréning"
       />
 
-      <Text style={styles.label}>ID kategórie:</Text>
+      <Text>Miesto:</Text>
       <TextInput
-        style={styles.input}
-        value={categoryId}
-        onChangeText={setCategoryId}
-        placeholder="1"
-        keyboardType="numeric"
+        style={inputStyle}
+        value={location}
+        onChangeText={setLocation}
+        placeholder="napr. Hala ATU"
       />
 
-      <Button title="Vytvoriť tréning" onPress={handleCreate} />
-    </View>
+      <Text>Dátum a čas:</Text>
+      <Button
+        title={date.toLocaleString("sk-SK")}
+        onPress={() => setShowPicker(true)}
+      />
+
+      {showPicker && (
+        <DateTimePicker
+          value={date}
+          mode="datetime"
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          onChange={(_, selectedDate) => {
+            setShowPicker(false);
+            if (selectedDate) setDate(selectedDate);
+          }}
+        />
+      )}
+
+      <View style={{ marginTop: 20 }}>
+        <Button title="Vytvoriť tréning" onPress={handleSubmit} />
+      </View>
+    </ScrollView>
   );
+}
+
+const inputStyle = {
+  backgroundColor: "#eee",
+  marginBottom: 10,
+  padding: 10,
+  borderRadius: 5,
 };
-
-export default CreateTrainingScreen;
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: "#fff" },
-  label: { marginTop: 15, fontSize: 16 },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    padding: 10,
-    marginTop: 5,
-    borderRadius: 5,
-  },
-});

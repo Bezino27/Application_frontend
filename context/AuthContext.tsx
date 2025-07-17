@@ -1,5 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, ReactNode, useEffect, useState } from 'react';
+import { BASE_URL } from '@/hooks/api';
+
+
 
 type Club = {
   id: number;
@@ -20,6 +23,7 @@ type UserDetails = {
 };
 
 type AuthContextType = {
+  refreshAccessToken: () => Promise<string | null>; 
   isLoggedIn: boolean | null;
   accessToken: string | null;
   userRoles: string[];
@@ -56,6 +60,7 @@ export const AuthContext = createContext<AuthContextType>({
   setUserClub: async () => {},
   setUserCategories: async () => {},
   setUserDetails: async () => {},
+  refreshAccessToken: async () => null,
 });
 
 type Props = {
@@ -208,7 +213,35 @@ export const AuthProvider = ({ children }: Props) => {
   } else {
     await AsyncStorage.removeItem('userDetails');
   }
-};
+  };
+
+  const refreshAccessToken = async (): Promise<string | null> => {
+  try {
+    const refresh = await AsyncStorage.getItem('refresh');
+    if (!refresh) return null;
+
+    const response = await fetch(`${BASE_URL}/token/refresh/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Token refresh zlyhal');
+    }
+
+    const data = await response.json();
+    const newAccessToken = data.access;
+
+    await AsyncStorage.setItem('access', newAccessToken);
+    setAccessToken(newAccessToken);
+    return newAccessToken;
+  } catch (error) {
+    console.error('Chyba pri obnove access tokenu:', error);
+    await logout(); // automaticky odhlási pri neplatnom refresh tokene
+    return null;
+  }
+  };
 
   // 5️⃣ Kontext poskytne všetko ostatným komponentom
   return (
@@ -226,6 +259,7 @@ export const AuthProvider = ({ children }: Props) => {
         setUserCategories: updateUserCategories,
         setUserClub: updateUserClub,
         setUserDetails: updateUserDetails,
+        refreshAccessToken, // 🆕 pridaj sem
       }}
     >
       {children}

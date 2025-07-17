@@ -16,6 +16,7 @@
       }
     },
     "android": {
+      "package": "com.ludimus.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/ludimus.png",
         "backgroundColor": "#ffffff"
@@ -33,13 +34,14 @@
       ],
       "expo-web-browser"
     ],
+
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "1e8f91c8-7807-4888-90ca-150a6feee4e2"
+        "projectId": "f4c5d722-59ae-4c68-8f76-d2ec13daf64e"
       }
     }
   }

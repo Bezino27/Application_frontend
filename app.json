@@ -18,11 +18,11 @@
     "android": {
       "package": "com.ludimus.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/splashscreen_logo.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true
     },
+
     "plugins": [
       "expo-router",
       [

@@ -8,6 +8,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Image,
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import { BASE_URL } from '../hooks/api';
@@ -112,68 +113,114 @@ export default function LoginScreen() {
   return (
 
       <View style={styles.container}>
+        <View style={styles.logoContainer}>
+          <Image source={require('../assets/images/nazov-black.png')} style={styles.logotitle} />
+          <Image source={require('../assets/images/ludimus.png')} style={styles.logo} />
+
+        </View>
+
         <Text style={styles.title}>Vitaj späť 👋</Text>
         <Text style={styles.subtitle}>Prihlás sa do systému</Text>
 
         <TextInput
-          placeholder="Používateľské meno"
-          value={username}
-          onChangeText={setUsername}
-          autoCapitalize="none"
-          placeholderTextColor="#999"
-          style={styles.input}
+            placeholder="Používateľské meno"
+            value={username}
+            onChangeText={setUsername}
+            autoCapitalize="none"
+            placeholderTextColor="#999"
+            style={styles.input}
         />
         <TextInput
-          placeholder="Heslo"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          placeholderTextColor="#999"
-          style={styles.input}
+            placeholder="Heslo"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            placeholderTextColor="#999"
+            style={styles.input}
         />
 
         {error && <Text style={styles.error}>{error}</Text>}
 
         {loading ? (
-          <ActivityIndicator size="large" color="#fff" />
+            <ActivityIndicator size="large" color="#000" />
         ) : (
-          <TouchableOpacity onPress={handleLogin} style={styles.button}>
-            <Text style={styles.buttonText}>Prihlásiť sa</Text>
-          </TouchableOpacity>
+            <TouchableOpacity onPress={handleLogin} style={styles.button}>
+              <Text style={styles.buttonText}>Prihlásiť sa</Text>
+            </TouchableOpacity>
         )}
       </View>
   );
 }
 
 const styles = StyleSheet.create({
-  background: { flex: 1, resizeMode: 'cover' },
   container: {
     flex: 1,
     justifyContent: 'center',
-    padding: 30,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 30,
+    backgroundColor: '#e0e0e0',
   },
-  title: { fontSize: 32, color: '#fff', fontWeight: 'bold', marginBottom: 10 },
-  subtitle: { fontSize: 18, color: '#ddd', marginBottom: 30 },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  logoText: {
+    fontSize: 40,
+    fontWeight: 'bold',
+    letterSpacing: 2,
+    marginBottom: 40,
+    fontStyle: 'italic',
+    color: '#000'
+  },
+  // Prípadne ak máš obrázok:
+   logo: {
+     width: 250,
+     height: 250,
+     resizeMode: 'contain',
+    marginBottom: 20,
+   },
+    logotitle: {
+      width: 300,
+      height: 120,
+      resizeMode: 'contain',
+    },
+  title: {
+    fontSize: 28,
+    color: '#111',
+    fontWeight: 'bold',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#444',
+    marginBottom: 25,
+    textAlign: 'center',
+  },
   input: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: '#fff',
     borderRadius: 10,
-    padding: 15,
+    padding: 14,
     marginBottom: 15,
     fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#ccc',
   },
   button: {
-    backgroundColor: '#4c68d7',
+    backgroundColor: '#D32F2F',
     paddingVertical: 15,
     borderRadius: 10,
     alignItems: 'center',
     marginTop: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 5,
-    elevation: 5,
   },
-  buttonText: { color: '#fff', fontSize: 17, fontWeight: 'bold' },
-  error: { color: '#ff4d4d', marginBottom: 10, fontSize: 15 },
+  buttonText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: 'bold',
+  },
+  error: {
+    color: '#D32F2F',
+    marginBottom: 10,
+    fontSize: 15,
+    textAlign: 'center',
+  },
 });

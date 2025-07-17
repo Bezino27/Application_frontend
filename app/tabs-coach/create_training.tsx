@@ -1,12 +1,15 @@
+// create_training.tsx
+
 import React, { useState, useEffect, useContext } from "react";
 import {
   View,
   Text,
   TextInput,
-  Button,
   Alert,
-  Platform,
   ScrollView,
+  TouchableOpacity,
+  Platform,
+  StyleSheet,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
@@ -15,36 +18,36 @@ import { BASE_URL } from "@/hooks/api";
 import { useFetchWithAuth } from "@/hooks/fetchWithAuth";
 import { AuthContext } from "@/context/AuthContext";
 
-
 export default function CreateTrainingScreen() {
   const { fetchWithAuth } = useFetchWithAuth();
   const router = useRouter();
+  const { userClub } = useContext(AuthContext);
 
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
+
   const [date, setDate] = useState(new Date());
-  const [showPicker, setShowPicker] = useState(false);
-  const { userClub } = useContext(AuthContext);
+  const [showDateTimePicker, setShowDateTimePicker] = useState(false);
 
   useEffect(() => {
-  const fetchCategories = async () => {
-    try {
-      if (!userClub?.id) return;
+    const fetchCategories = async () => {
+      try {
+        if (!userClub?.id) return;
+        const res = await fetchWithAuth(`${BASE_URL}/categories/${userClub.id}/`);
+        if (!res.ok) throw new Error("Chyba pri načítaní kategórií");
+        const data = await res.json();
+        setCategories(data);
+      } catch (err) {
+        console.error("CHYBA PRI NAČÍTANÍ KATEGÓRIÍ:", err);
+        Alert.alert("Chyba", "Nepodarilo sa načítať kategórie.");
+      }
+    };
 
-      const res = await fetchWithAuth(`${BASE_URL}/categories/${userClub.id}/`);
-      if (!res.ok) throw new Error("Chyba pri načítaní kategórií");
-      const data = await res.json();
-      setCategories(data);
-    } catch (err) {
-      console.error("CHYBA PRI NAČÍTANÍ KATEGÓRIÍ:", err);
-      Alert.alert("Chyba", "Nepodarilo sa načítať kategórie.");
-    }
-  };
+    fetchCategories();
+  }, [userClub]);
 
-  fetchCategories();
-}, [userClub]);
   const handleSubmit = async () => {
     try {
       if (!description || !location || !categoryId) {
@@ -52,13 +55,13 @@ export default function CreateTrainingScreen() {
         return;
       }
 
-      const isoDate = date.toISOString();
+      const dateToSend = new Date(date);
+      dateToSend.setSeconds(0, 0);
+
+      const isoDate = dateToSend.toISOString();
 
       const res = await fetchWithAuth(`${BASE_URL}/trainings/`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({
           description,
           location,
@@ -77,69 +80,145 @@ export default function CreateTrainingScreen() {
     }
   };
 
+  const handleDateTimeChange = (_: any, selectedDate?: Date) => {
+    if (selectedDate) {
+      selectedDate.setSeconds(0, 0);
+      setDate(selectedDate);
+    }
+  };
+
   return (
-    <ScrollView contentContainerStyle={{ padding: 20 }}>
-      <Text style={{ fontWeight: "bold", fontSize: 20, marginBottom: 10 }}>
-        Vytvoriť tréning
-      </Text>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <Text style={styles.header}>Vytvoriť tréning</Text>
 
-      <Text>Kategória:</Text>
-      <View style={inputStyle}>
-        <Picker
-          selectedValue={categoryId}
-          onValueChange={(value) => setCategoryId(value)}
-        >
-          <Picker.Item label="Vyber kategóriu..." value={null} />
-          {categories.map((cat) => (
-            <Picker.Item key={cat.id} label={cat.name} value={cat.id} />
-          ))}
-        </Picker>
-      </View>
+        <Text style={styles.label}>Kategória:</Text>
+        <View style={styles.pickerWrapper}>
+          <Picker
+              selectedValue={categoryId}
+              onValueChange={(value) => setCategoryId(value)}
+              dropdownIconColor="#000"
+              style={{ color: "#000" }}
+              itemStyle={{ color: "#000" }}
+          >
+            <Picker.Item label="Vyber kategóriu..." value={null} color="#000" />
+            {categories.map((cat) => (
+                <Picker.Item key={cat.id} label={cat.name} value={cat.id} color="#000" />
+            ))}
+          </Picker>
+        </View>
 
-      <Text>Popis tréningu:</Text>
-      <TextInput
-        style={inputStyle}
-        value={description}
-        onChangeText={setDescription}
-        placeholder="napr. Kondičný tréning"
-      />
-
-      <Text>Miesto:</Text>
-      <TextInput
-        style={inputStyle}
-        value={location}
-        onChangeText={setLocation}
-        placeholder="napr. Hala ATU"
-      />
-
-      <Text>Dátum a čas:</Text>
-      <Button
-        title={date.toLocaleString("sk-SK")}
-        onPress={() => setShowPicker(true)}
-      />
-
-      {showPicker && (
-        <DateTimePicker
-          value={date}
-          mode="datetime"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={(_, selectedDate) => {
-            setShowPicker(false);
-            if (selectedDate) setDate(selectedDate);
-          }}
+        <Text style={styles.label}>Popis tréningu:</Text>
+        <TextInput
+            style={styles.input}
+            value={description}
+            onChangeText={setDescription}
+            placeholder="napr. Kondičný tréning"
+            placeholderTextColor="#888"
         />
-      )}
 
-      <View style={{ marginTop: 20 }}>
-        <Button title="Vytvoriť tréning" onPress={handleSubmit} />
-      </View>
-    </ScrollView>
+        <Text style={styles.label}>Miesto:</Text>
+        <TextInput
+            style={styles.input}
+            value={location}
+            onChangeText={setLocation}
+            placeholder="napr. Hala ATU"
+            placeholderTextColor="#888"
+        />
+
+        <Text style={styles.label}>Dátum a čas:</Text>
+        <TouchableOpacity
+            onPress={() => setShowDateTimePicker(!showDateTimePicker)}
+            style={styles.dateButton}
+        >
+          <Text style={styles.dateButtonText}>
+            Vybrať: {date.toLocaleDateString("sk-SK")} {date.toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" })}
+          </Text>
+        </TouchableOpacity>
+
+        {showDateTimePicker && (
+            <View style={styles.pickerContainer}>
+              <DateTimePicker
+                  value={date}
+                  mode="datetime"
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  textColor="#000"
+                  themeVariant="light"
+                  onChange={(event, selectedDate) => {
+                    handleDateTimeChange(event, selectedDate);
+                  }}
+                  style={{ backgroundColor: Platform.OS === "ios" ? "#fff" : undefined }}
+              />
+            </View>
+        )}
+
+        <TouchableOpacity onPress={handleSubmit} style={styles.submitButton}>
+          <Text style={styles.submitButtonText}>Vytvoriť tréning</Text>
+        </TouchableOpacity>
+      </ScrollView>
   );
 }
 
-const inputStyle = {
-  backgroundColor: "#eee",
-  marginBottom: 10,
-  padding: 10,
-  borderRadius: 5,
-};
+const styles = StyleSheet.create({
+  container: {
+    padding: 20,
+    backgroundColor: "#fff",
+    flexGrow: 1,
+  },
+  header: {
+    fontWeight: "bold",
+    fontSize: 24,
+    marginBottom: 20,
+    color: "#111",
+  },
+  label: {
+    marginTop: 10,
+    marginBottom: 5,
+    fontWeight: "600",
+    color: "#333",
+  },
+  pickerWrapper: {
+    backgroundColor: "#f2f2f2",
+    borderRadius: 8,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    marginBottom: 15,
+  },
+  input: {
+    backgroundColor: "#f2f2f2",
+    padding: 12,
+    borderRadius: 8,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    marginBottom: 15,
+    color: "#111",
+  },
+  dateButton: {
+    backgroundColor: "#4c68d7",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 10,
+    alignItems: "center",
+  },
+  dateButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+  pickerContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    padding: 5,
+    marginBottom: 15,
+  },
+  submitButton: {
+    backgroundColor: "#28a745",
+    padding: 14,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  submitButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+});

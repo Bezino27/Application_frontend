@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useCallback } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
-import { AuthContext } from '../../context/AuthContext';
-import { BASE_URL } from '../../hooks/api';
-import { useFetchWithAuth } from '../../hooks/fetchWithAuth';
+import { AuthContext } from '@/context/AuthContext';
+import { BASE_URL } from '@/hooks/api';
+import { useFetchWithAuth } from '@/hooks/fetchWithAuth';
 
 type Training = {
   id: number;
@@ -25,27 +25,34 @@ export default function TreningyScreen() {
   const [trainings, setTrainings] = useState<Training[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchTrainings = async () => {
+
+
+  const fetchTrainings = useCallback(async () => {
     try {
-        const res = await fetchWithAuth(`${BASE_URL}/player-trainings/`);
-        if (!res.ok) throw new Error('Chyba pri načítaní tréningov');
-        const data = await res.json();
-        const now = new Date();
-        const upcomingTrainings = data.filter((t: Training) => new Date(t.date) > now);
-        setTrainings(upcomingTrainings);
-        console.log("Training dates:", data.map((t: Training) => t.date));
+      const res = await fetchWithAuth(`${BASE_URL}/player-trainings/`);
+      const data = await res.json();
+      const now = new Date();
+      const upcomingTrainings = data.filter((t: Training) => new Date(t.date) > now);
+      setTrainings(upcomingTrainings);
     } catch (error) {
-        console.error(error);
+      console.error(error);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-  };
+  }, [fetchWithAuth]); // alebo [] ak fetchWithAuth sa nemení nikdy
+
 
   useEffect(() => {
-    if (isLoggedIn) fetchTrainings();
-  }, [isLoggedIn]);
+    if (isLoggedIn) {
+      fetchTrainings().then((result) => {
+      });
+    }
+  }, [isLoggedIn, fetchTrainings]);
 
-  const handleAttendanceChange = async (trainingId: number, newStatus: "present" | "absent" | "unknown") => {
+  const handleAttendanceChange = async (
+      trainingId: number,
+      newStatus: "present" | "absent" | "unknown"
+  ) => {
     try {
       const res = await fetchWithAuth(`${BASE_URL}/set-training-attendance/`, {
         method: "POST",
@@ -54,9 +61,40 @@ export default function TreningyScreen() {
         },
         body: JSON.stringify({ training_id: trainingId, status: newStatus }),
       });
-      if (!res.ok) throw new Error("Nepodarilo sa aktualizovať účasť");
-      await fetchTrainings();
+
+      if (!res.ok) {
+        Alert.alert("Chyba", "Nepodarilo sa zmeniť status účasti.");
+        return;
+      }
+
+      // 🧠 Lokálna aktualizácia
+      setTrainings((prev) =>
+          prev.map((t) =>
+              t.id === trainingId
+                  ? {
+                    ...t,
+                    user_status: newStatus,
+                    attendance_summary: {
+                      ...t.attendance_summary,
+                      // len orientačne – reálne hodnoty sa nezmenia bez reloadu
+                      present: newStatus === "present"
+                          ? t.attendance_summary.present + 1
+                          : newStatus === "absent" && t.user_status === "present"
+                              ? t.attendance_summary.present - 1
+                              : t.attendance_summary.present,
+                      absent: newStatus === "absent"
+                          ? t.attendance_summary.absent + 1
+                          : newStatus === "present" && t.user_status === "absent"
+                              ? t.attendance_summary.absent - 1
+                              : t.attendance_summary.absent,
+                      unknown: t.attendance_summary.unknown, // nemeníme
+                    },
+                  }
+                  : t
+          )
+      );
     } catch (error) {
+      console.error(error);
       Alert.alert("Chyba", "Nepodarilo sa zmeniť status účasti.");
     }
   };

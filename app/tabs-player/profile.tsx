@@ -3,12 +3,12 @@ import {
   View,
   Text,
   StyleSheet,
-  Button,
   ScrollView,
   TouchableOpacity,
+  Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { AuthContext } from "../../context/AuthContext";
+import { AuthContext } from "@/context/AuthContext";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function TabsIndex() {
@@ -32,7 +32,7 @@ export default function TabsIndex() {
     if (mounted && !isLoggedIn) {
       router.replace("/login");
     }
-  }, [isLoggedIn, mounted]);
+  }, [isLoggedIn, mounted, router]);
 
   if (!isLoggedIn) {
     return (
@@ -43,39 +43,34 @@ export default function TabsIndex() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.heading}>👋 Vitaj, {userDetails?.name || "hráč"}</Text>
+      <View style={styles.fullScreen}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <Text style={styles.heading}>
+            👋 Vitaj, {String(userDetails?.username || "hráč")}
+          </Text>
+          <View style={styles.card}>
+            <ProfileRow label="Username" value={userDetails?.username} />
+            <ProfileRow label="Email" value={userDetails?.email} />
+            {userDetails?.email_2 && <ProfileRow label="Email 2" value={userDetails.email_2} />}
+            <ProfileRow label="Dátum narodenia" value={userDetails?.birth_date} />
+            <ProfileRow label="Výška" value={userDetails?.height ? `${userDetails.height} cm` : ""} />
+            <ProfileRow label="Váha" value={userDetails?.weight ? `${userDetails.weight} kg` : ""} />
+            <ProfileRow label="Strana hokejky" value={userDetails?.side} />
+            <ProfileRow label="Číslo na drese" value={userDetails?.number} />
+            <ProfileRow label="Klub" value={userClub?.name} />
+            <ProfileRow label="Roly" value={userRoles.join(", ")} />
+            <ProfileRow label="Kategórie" value={userCategories.join(", ")} />
+          </View>
 
-        <View style={styles.card}>
-          <ProfileRow label="Username" value={userDetails?.username} />
-          <ProfileRow label="Email" value={userDetails?.email} />
-          {userDetails?.email_2 && <ProfileRow label="Email 2" value={userDetails.email_2} />}
-          <ProfileRow label="Dátum narodenia" value={userDetails?.birth_date} />
-          <ProfileRow label="Výška" value={userDetails?.height ? `${userDetails.height} cm` : ""} />
-          <ProfileRow label="Váha" value={userDetails?.weight ? `${userDetails.weight} kg` : ""} />
-          <ProfileRow label="Strana hokejky" value={userDetails?.side} />
-          <ProfileRow label="Číslo na drese" value={userDetails?.number} />
-          <ProfileRow label="Klub" value={userClub?.name} />
-          <ProfileRow label="Roly" value={userRoles.join(", ")} />
-          <ProfileRow label="Kategórie" value={userCategories.join(", ")} />
-        </View>
+          <TouchableOpacity style={[styles.button, styles.editButton]} onPress={() => router.push("/profile-edit")}>
+            <Text style={styles.buttonText}>✏️ Upraviť profil</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.button, styles.editButton]}
-          onPress={() => router.push("/profile-edit")}
-        >
-          <Text style={styles.buttonText}>✏️ Upraviť profil</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.button, styles.logoutButton]}
-          onPress={logout}
-        >
-          <Text style={styles.buttonText}>🚪 Odhlásiť sa</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </SafeAreaView>
+          <TouchableOpacity style={[styles.button, styles.logoutButton]} onPress={logout}>
+            <Text style={styles.buttonText}>🚪 Odhlásiť sa</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
   );
 }
 
@@ -90,19 +85,28 @@ const ProfileRow = ({ label, value }: { label: string; value?: string }) => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
+  fullScreen: {
     flex: 1,
     backgroundColor: "#f4f4f8",
   },
-  container: {
+  scrollContent: {
+    flexGrow: 1,
     padding: 20,
+    paddingBottom: 40,
+  },
+  topPadding: {
+    height: Platform.OS === "ios" ? 60 : 30, // manuálne safe-area riešenie
   },
   heading: {
     fontSize: 26,
     fontWeight: "bold",
-    marginBottom: 20,
+    marginBottom: 15,
     color: "#1e1e1e",
   },
+  container: {
+    padding: 20,
+  },
+
   card: {
     backgroundColor: "#fff",
     borderRadius: 12,

@@ -2,7 +2,6 @@ import { useRouter } from 'expo-router';
 import { useContext, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  ImageBackground,
   StyleSheet,
   Text,
   TextInput,
@@ -10,27 +9,8 @@ import {
   View,
   Image,
 } from 'react-native';
-import { AuthContext } from '../context/AuthContext';
-import { BASE_URL } from '../hooks/api';
-
-// Typ pre Club - uprav podľa svojho backendu
-interface Club {
-  id: number;
-  name: string;
-  description?: string;
-}
-
-interface UserDetails {
-  username: string;
-  name: string;
-  birth_date: string;
-  number: string;
-  email: string;
-  email_2?: string;
-  height?: string;
-  weight?: string;
-  side?: string;
-}
+import { AuthContext } from '@/context/AuthContext';
+import { loginWithCredentials } from '@/hooks/authHelpers';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -49,53 +29,20 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     setLoading(true);
     setError(null);
-    
 
     try {
-      // 1. Požiadavka na získanie tokenu
-      const response = await fetch(`${BASE_URL}/token/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
+      const result = await loginWithCredentials(username, password);
+      const club = result.club ?? null;
 
-      if (!response.ok) {
-        throw new Error('Neplatné prihlasovacie údaje');
-      }
+      await login(
+          result.access,
+          result.refresh,
+          club,
+          result.roles,
+          result.categories,
+          result.details
+      );
 
-      const data = await response.json();
-
-      // 2. Požiadavka na získanie údajov používateľa (vrátane rolí a klubu)
-      const meResponse = await fetch(`${BASE_URL}/me/`, {
-        headers: { Authorization: `Bearer ${data.access}` },
-      });
-
-      if (!meResponse.ok) {
-        throw new Error('Nepodarilo sa načítať údaje o používateľovi');
-      }
-
-      const meData = await meResponse.json();
-      const details: UserDetails = {
-        username: meData.username,
-        name: meData.name,
-        birth_date: meData.birth_date,
-        number: meData.number,
-        email: meData.email,
-        email_2: meData.email_2,
-        height: meData.height,
-        weight: meData.weight,
-        side: meData.side,
-      };
-      // 3. Typovanie a bezpečné načítanie klubu
-
-      const club: Club | null = meData.club ?? null;
-      const roles: string[] = Array.isArray(meData.roles) ? meData.roles : [];
-      const categories: string[] = Array.isArray(meData.assigned_categories) ? meData.assigned_categories : [];
-      console.log('meData:', meData);
-      // 4. Zavolanie login z AuthContext
-      // Zavolanie login z AuthContext
-      await login(data.access, data.refresh, club, roles, categories, details);
-      // 5. Presmerovanie po úspešnom prihlásení
       router.replace('/select-role');
     } catch (e: any) {
       setError(e.message);
@@ -104,19 +51,11 @@ export default function LoginScreen() {
     }
   };
 
-
-
-
-
-
-
   return (
-
       <View style={styles.container}>
         <View style={styles.logoContainer}>
-          <Image source={require('../assets/images/nazov-black.png')} style={styles.logotitle} />
-          <Image source={require('../assets/images/ludimus.png')} style={styles.logo} />
-
+          <Image source={require('@/assets/images/nazov-black.png')} style={styles.logotitle} />
+          <Image source={require('@/assets/images/ludimus.png')} style={styles.logo} />
         </View>
 
         <Text style={styles.title}>Vitaj späť 👋</Text>
@@ -163,26 +102,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
   },
-  logoText: {
-    fontSize: 40,
-    fontWeight: 'bold',
-    letterSpacing: 2,
-    marginBottom: 40,
-    fontStyle: 'italic',
-    color: '#000'
+  logotitle: {
+    width: 300,
+    height: 120,
+    resizeMode: 'contain',
   },
-  // Prípadne ak máš obrázok:
-   logo: {
-     width: 250,
-     height: 250,
-     resizeMode: 'contain',
+  logo: {
+    width: 250,
+    height: 250,
+    resizeMode: 'contain',
     marginBottom: 20,
-   },
-    logotitle: {
-      width: 300,
-      height: 120,
-      resizeMode: 'contain',
-    },
+  },
   title: {
     fontSize: 28,
     color: '#111',
@@ -195,6 +125,7 @@ const styles = StyleSheet.create({
     color: '#444',
     marginBottom: 25,
     textAlign: 'center',
+    fontStyle: 'italic',
   },
   input: {
     backgroundColor: '#fff',

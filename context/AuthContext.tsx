@@ -2,7 +2,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, ReactNode, useEffect, useState } from 'react';
 import { BASE_URL } from '@/hooks/api';
 
-
+// 🔁 Nový typ pre rolu používateľa
+export type UserRole = {
+  role: string;
+  category: {
+    id: number;
+    name: string;
+  };
+};
 
 type Club = {
   id: number;
@@ -23,29 +30,27 @@ type UserDetails = {
 };
 
 type AuthContextType = {
-  refreshAccessToken: () => Promise<string | null>; 
+  refreshAccessToken: () => Promise<string | null>;
   isLoggedIn: boolean | null;
   accessToken: string | null;
-  userRoles: string[];
+  userRoles: UserRole[];
   userCategories: string[];
   userClub: Club | null;
   login: (
-  accessToken: string,
-  refreshToken: string,
-  club: Club | null,
-  roles: string[],
-  categories: string[],
-  userDetails: UserDetails
-) => Promise<void>;
+      accessToken: string,
+      refreshToken: string,
+      club: Club | null,
+      roles: UserRole[],
+      categories: string[],
+      userDetails: UserDetails
+  ) => Promise<void>;
   logout: () => Promise<void>;
-  setUserRoles: (roles: string[]) => Promise<void>;
+  setUserRoles: (roles: UserRole[]) => Promise<void>;
   setUserClub: (club: Club | null) => Promise<void>;
   setUserCategories: (categories: string[]) => Promise<void>;
   userDetails: UserDetails | null;
   setUserDetails: (details: UserDetails | null) => Promise<void>;
 };
-
-
 
 export const AuthContext = createContext<AuthContextType>({
   isLoggedIn: null,
@@ -69,13 +74,12 @@ type Props = {
 
 export const AuthProvider = ({ children }: Props) => {
   const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [userRoles, setUserRolesState] = useState<string[]>([]);
+  const [userRoles, setUserRolesState] = useState<UserRole[]>([]);
   const [userCategories, setUserCategoriesState] = useState<string[]>([]);
   const [userClub, setUserClubState] = useState<Club | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userDetails, setUserDetailsState] = useState<UserDetails | null>(null);
 
-  // 1️⃣ Načítanie údajov z AsyncStorage pri štarte
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -84,9 +88,7 @@ export const AuthProvider = ({ children }: Props) => {
         const categoriesStr = await AsyncStorage.getItem('userCategories');
         const clubStr = await AsyncStorage.getItem('userClub');
         const detailsStr = await AsyncStorage.getItem('userDetails');
-
-        console.log('Načítané z AsyncStorage:', { token, rolesStr, categoriesStr, clubStr });
-
+        console.log("userRoles", userRoles);
         setAccessToken(token);
 
         if (rolesStr) {
@@ -94,7 +96,7 @@ export const AuthProvider = ({ children }: Props) => {
             const rolesParsed = JSON.parse(rolesStr);
             setUserRolesState(Array.isArray(rolesParsed) ? rolesParsed : []);
           } catch {
-            console.warn('userRoles JSON parse error, nastavujem na []');
+            console.warn('userRoles JSON parse error');
             setUserRolesState([]);
           }
         }
@@ -104,7 +106,7 @@ export const AuthProvider = ({ children }: Props) => {
             const categoriesParsed = JSON.parse(categoriesStr);
             setUserCategoriesState(Array.isArray(categoriesParsed) ? categoriesParsed : []);
           } catch {
-            console.warn('userCategories JSON parse error, nastavujem na []');
+            console.warn('userCategories JSON parse error');
             setUserCategoriesState([]);
           }
         }
@@ -114,11 +116,10 @@ export const AuthProvider = ({ children }: Props) => {
             const clubParsed = JSON.parse(clubStr);
             setUserClubState(clubParsed);
           } catch {
-            console.warn('userClub JSON parse error, nastavujem na null');
+            console.warn('userClub JSON parse error');
             setUserClubState(null);
           }
         }
-
 
         if (detailsStr) {
           try {
@@ -128,7 +129,7 @@ export const AuthProvider = ({ children }: Props) => {
             console.warn('userDetails JSON parse error');
             setUserDetailsState(null);
           }
-        } 
+        }
 
       } catch (error) {
         console.error('Chyba pri načítaní údajov z AsyncStorage:', error);
@@ -143,14 +144,13 @@ export const AuthProvider = ({ children }: Props) => {
     loadData();
   }, []);
 
-  // 2️⃣ Login - uloží všetky údaje do AsyncStorage aj do React state
   const login = async (
-    access: string,
-    refresh: string,
-    club: Club | null,
-    roles: string[],
-    categories: string[],
-    userDetails: UserDetails
+      access: string,
+      refresh: string,
+      club: Club | null,
+      roles: UserRole[],
+      categories: string[],
+      userDetails: UserDetails
   ) => {
     try {
       await AsyncStorage.setItem('access', access);
@@ -175,10 +175,8 @@ export const AuthProvider = ({ children }: Props) => {
     }
   };
 
-  // 3️⃣ Logout - vymaže všetky údaje
   const logout = async () => {
-    await AsyncStorage.multiRemove(['access', 'refresh', 'userRoles', 'userCategories', 'userClub']);
-        await AsyncStorage.multiRemove(['access', 'refresh', 'userRoles', 'userCategories', 'userClub', 'userDetails']);
+    await AsyncStorage.multiRemove(['access', 'refresh', 'userRoles', 'userCategories', 'userClub', 'userDetails']);
     setAccessToken(null);
     setUserRolesState([]);
     setUserCategoriesState([]);
@@ -186,8 +184,7 @@ export const AuthProvider = ({ children }: Props) => {
     setUserDetailsState(null);
   };
 
-  // 4️⃣ Update helper funkcie pre ručnú zmenu
-  const updateUserRoles = async (roles: string[]) => {
+  const updateUserRoles = async (roles: UserRole[]) => {
     setUserRolesState(roles);
     await AsyncStorage.setItem('userRoles', JSON.stringify(roles));
   };
@@ -207,62 +204,61 @@ export const AuthProvider = ({ children }: Props) => {
   };
 
   const updateUserDetails = async (details: UserDetails | null) => {
-  setUserDetailsState(details);
-  if (details) {
-    await AsyncStorage.setItem('userDetails', JSON.stringify(details));
-  } else {
-    await AsyncStorage.removeItem('userDetails');
-  }
+    setUserDetailsState(details);
+    if (details) {
+      await AsyncStorage.setItem('userDetails', JSON.stringify(details));
+    } else {
+      await AsyncStorage.removeItem('userDetails');
+    }
   };
 
   const refreshAccessToken = async (): Promise<string | null> => {
-  try {
-    const refresh = await AsyncStorage.getItem('refresh');
-    if (!refresh) return null;
+    try {
+      const refresh = await AsyncStorage.getItem('refresh');
+      if (!refresh) return null;
 
-    const response = await fetch(`${BASE_URL}/token/refresh/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh }),
-    });
+      const response = await fetch(`${BASE_URL}/token/refresh/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh }),
+      });
 
-    if (!response.ok) {
-      throw new Error('Token refresh zlyhal');
+      if (!response.ok) {
+        throw new Error('Token refresh zlyhal');
+      }
+
+      const data = await response.json();
+      const newAccessToken = data.access;
+
+      await AsyncStorage.setItem('access', newAccessToken);
+      setAccessToken(newAccessToken);
+      return newAccessToken;
+    } catch (error) {
+      console.error('Chyba pri obnove access tokenu:', error);
+      await logout();
+      return null;
     }
-
-    const data = await response.json();
-    const newAccessToken = data.access;
-
-    await AsyncStorage.setItem('access', newAccessToken);
-    setAccessToken(newAccessToken);
-    return newAccessToken;
-  } catch (error) {
-    console.error('Chyba pri obnove access tokenu:', error);
-    await logout(); // automaticky odhlási pri neplatnom refresh tokene
-    return null;
-  }
   };
 
-  // 5️⃣ Kontext poskytne všetko ostatným komponentom
   return (
-    <AuthContext.Provider
-      value={{
-        isLoggedIn: isLoading ? null : !!accessToken,
-        accessToken,
-        userRoles,
-        userCategories,
-        userClub,
-        userDetails,
-        login,
-        logout,
-        setUserRoles: updateUserRoles,
-        setUserCategories: updateUserCategories,
-        setUserClub: updateUserClub,
-        setUserDetails: updateUserDetails,
-        refreshAccessToken, // 🆕 pridaj sem
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+      <AuthContext.Provider
+          value={{
+            isLoggedIn: isLoading ? null : !!accessToken,
+            accessToken,
+            userRoles,
+            userCategories,
+            userClub,
+            userDetails,
+            login,
+            logout,
+            setUserRoles: updateUserRoles,
+            setUserCategories: updateUserCategories,
+            setUserClub: updateUserClub,
+            setUserDetails: updateUserDetails,
+            refreshAccessToken,
+          }}
+      >
+        {children}
+      </AuthContext.Provider>
   );
 };

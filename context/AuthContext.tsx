@@ -89,6 +89,7 @@ export const AuthProvider = ({ children }: Props) => {
         const clubStr = await AsyncStorage.getItem('userClub');
         const detailsStr = await AsyncStorage.getItem('userDetails');
         console.log("userRoles", userRoles);
+        console.log("userRoles", JSON.stringify(userRoles));
         setAccessToken(token);
 
         if (rolesStr) {

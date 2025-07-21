@@ -70,7 +70,7 @@ export default function ProfileScreen() {
                 }
             >
               {userRoles.map((r: any, index: number) => {
-                const roleKey = r.role.toLowerCase(); // napr. "hráč" → "hráč"
+                const roleKey = typeof r.role === "string" ? r.role.toLowerCase() : "";
 
                 const roleLabel =
                     roleKey === "coach" || roleKey === "tréner" ? "Tréner" :
@@ -119,7 +119,7 @@ export default function ProfileScreen() {
               {userRoles.map((r: any, index: number) => (
                   <View key={index} style={styles.chip}>
                     <Text style={styles.chipText}>
-                      {`${r.role.toUpperCase()} (${r.category.name})`}
+                      {`${typeof r.role === "string" ? r.role.toUpperCase() : "NEZNÁMA"} (${r.category.name})`}
                     </Text>
                   </View>
               ))}

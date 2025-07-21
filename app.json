@@ -34,8 +34,8 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-web-browser",
-      "sentry-expo"
+      "expo-web-browser"
+
     ],
     "experiments": {
       "typedRoutes": true
@@ -46,5 +46,6 @@
         "projectId": "f4c5d722-59ae-4c68-8f76-d2ec13daf64e"
       }
     }
+    }
   }
-}
+

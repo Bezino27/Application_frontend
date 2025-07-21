@@ -9,7 +9,9 @@ export default function LoginScreen() {
 
   useEffect(() => {
     if (isLoggedIn) {
-      const roles = userRoles.map(r => r.role.toLowerCase());
+      const roles = userRoles
+          .map(r => r?.role?.toLowerCase?.())
+          .filter(Boolean); // odstráni undefined
       console.log(roles);
       if (roles.includes('hráč')) {
         router.replace('/tabs-player');

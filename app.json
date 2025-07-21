@@ -2,7 +2,7 @@
   "expo": {
     "name": "Ludimus",
     "slug": "ludimus",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/ludimus-notr-black.png",
     "scheme": "ludimus",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ludimus.app",
-      "buildNumber": "1.0.1",
+      "buildNumber": "1.0.2",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -34,7 +34,8 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "sentry-expo"
     ],
     "experiments": {
       "typedRoutes": true

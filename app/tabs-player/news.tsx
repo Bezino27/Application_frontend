@@ -22,14 +22,18 @@ type Training = {
 export default function TreningyScreen() {
   const { isLoggedIn, userCategories, userRoles, accessToken } = useContext(AuthContext);
   const { fetchWithAuth } = useFetchWithAuth();
+  const router = useRouter();
 
   const [trainings, setTrainings] = useState<Training[]>([]);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
 
-  const coachCategories = userRoles
-      .filter((r: UserRole) => r.role === 'Tréner')
-      .map((r: UserRole) => r.category.name);
+  // 🔧 Správne porovnávanie roly + ochrana
+  const coachCategories = [...new Set(
+      userRoles
+          .filter((r: UserRole) => r.role === 'coach')
+          .map((r: UserRole) => r.category?.name)
+          .filter(Boolean)
+  )];
 
   const fetchTrainings = useCallback(async () => {
     try {
@@ -37,35 +41,30 @@ export default function TreningyScreen() {
       const data = await res.json();
       const now = new Date();
       const upcomingTrainings = data.filter((t: Training) => new Date(t.date) > now);
+      console.log("DEBUG Trainings fetched:", upcomingTrainings);
       setTrainings(upcomingTrainings);
-      console.log("DEBUG Trainings fetched:", data);
     } catch (error) {
-      console.error(error);
+      console.error("fetchTrainings error:", error);
     } finally {
       setLoading(false);
     }
   }, [fetchWithAuth]);
 
-
   useEffect(() => {
     const fetchData = async () => {
       if (isLoggedIn && accessToken) {
         await fetchTrainings();
-
-        const meResponse = await fetch(`${BASE_URL}/me/`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-
-        if (!meResponse.ok) {
-          console.error("Nepodarilo sa načítať me info", meResponse.status);
-          return; // alebo Alert, ak chceš
+        try {
+          const meResponse = await fetch(`${BASE_URL}/me/`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          const meData = await meResponse.json();
+          console.log("📥 meData.roles:", meData.roles);
+        } catch (err) {
+          console.error("Nepodarilo sa načítať me info", err);
         }
-
-        const meData = await meResponse.json();
-        console.log("📥 meData.roles:", meData.roles);
       }
     };
-
     fetchData();
   }, [isLoggedIn]);
 
@@ -76,9 +75,7 @@ export default function TreningyScreen() {
     try {
       const res = await fetchWithAuth(`${BASE_URL}/set-training-attendance/`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ training_id: trainingId, status: newStatus }),
       });
 
@@ -114,7 +111,7 @@ export default function TreningyScreen() {
           )
       );
     } catch (error) {
-      console.error(error);
+      console.error("Attendance error:", error);
       Alert.alert("Chyba", "Nepodarilo sa zmeniť status účasti.");
     }
   };
@@ -123,18 +120,15 @@ export default function TreningyScreen() {
     return <ActivityIndicator style={{ marginTop: 50 }} />;
   }
 
-  const groupedTrainings = (userCategories || [])
-      .filter((category): category is string => typeof category === 'string' && !!category)
-      .reduce((acc, category) => {
-        const filtered = trainings.filter((t) => t.category_name === category);
-        if (filtered.length > 0) acc[category] = filtered;
-        return acc;
-      }, {} as Record<string, Training[]>);
+  const groupedTrainings = (userCategories || []).reduce((acc, category) => {
+    if (!category || typeof category !== 'string') return acc;
+    const filtered = trainings.filter((t) => t.category_name === category);
+    if (filtered.length > 0) acc[category] = filtered;
+    return acc;
+  }, {} as Record<string, Training[]>);
+
   console.log("🧪 userCategories:", userCategories);
   console.log("🧪 training.category_name:", trainings.map(t => t.category_name));
-  if (!Array.isArray(userCategories) || userCategories.length === 0) {
-    return <Text style={{ marginTop: 50, textAlign: 'center' }}>⚠️ Chýbajú kategórie pre hráča</Text>;
-  }
 
   return (
       <ScrollView style={{ padding: 20 }}>
@@ -197,22 +191,13 @@ export default function TreningyScreen() {
                         {canChangeStatus && !isCoachInThisCategory ? (
                             <View style={{ flexDirection: 'row', marginTop: 10, gap: 10 }}>
                               {["present", "absent"].map((status) => {
-                                const label =
-                                    status === "present"
-                                        ? "Prídem"
-                                        : status === "absent"
-                                            ? "Neprídem"
-                                            : "Nezodpovedané";
-
+                                const label = status === "present" ? "Prídem" : "Neprídem";
                                 const backgroundColor =
                                     t.user_status === status
                                         ? status === "present"
                                             ? "#4caf50"
-                                            : status === "absent"
-                                                ? "#f44336"
-                                                : "#9e9e9e"
+                                            : "#f44336"
                                         : "#e0e0e0";
-
                                 const textColor = t.user_status === status ? "#fff" : "#000";
 
                                 return (

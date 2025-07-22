@@ -16,9 +16,9 @@ export default function LoginScreen() {
 
     console.log('Zistené roly:', roles);
 
-    if (roles.includes('hráč')) {
+    if (roles.includes('player')) {
       router.replace('/tabs-player');
-    } else if (roles.includes('tréner')) {
+    } else if (roles.includes('coach')) {
       router.replace('/tabs-coach');
     } else if (roles.includes('admin')) {
       router.replace('/tabs-admin');

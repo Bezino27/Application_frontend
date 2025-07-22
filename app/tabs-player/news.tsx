@@ -38,12 +38,14 @@ export default function TreningyScreen() {
       const now = new Date();
       const upcomingTrainings = data.filter((t: Training) => new Date(t.date) > now);
       setTrainings(upcomingTrainings);
+      console.log("DEBUG Trainings fetched:", data);
     } catch (error) {
       console.error(error);
     } finally {
       setLoading(false);
     }
   }, [fetchWithAuth]);
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -121,11 +123,18 @@ export default function TreningyScreen() {
     return <ActivityIndicator style={{ marginTop: 50 }} />;
   }
 
-  const groupedTrainings = userCategories.reduce((acc, category) => {
-    const filtered = trainings.filter((t) => t.category_name === category);
-    if (filtered.length > 0) acc[category] = filtered;
-    return acc;
-  }, {} as Record<string, Training[]>);
+  const groupedTrainings = (userCategories || [])
+      .filter((category): category is string => typeof category === 'string' && !!category)
+      .reduce((acc, category) => {
+        const filtered = trainings.filter((t) => t.category_name === category);
+        if (filtered.length > 0) acc[category] = filtered;
+        return acc;
+      }, {} as Record<string, Training[]>);
+  console.log("🧪 userCategories:", userCategories);
+  console.log("🧪 training.category_name:", trainings.map(t => t.category_name));
+  if (!Array.isArray(userCategories) || userCategories.length === 0) {
+    return <Text style={{ marginTop: 50, textAlign: 'center' }}>⚠️ Chýbajú kategórie pre hráča</Text>;
+  }
 
   return (
       <ScrollView style={{ padding: 20 }}>

@@ -5,7 +5,7 @@ import { Alert } from 'react-native';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { isLoggedIn, userRoles, logout } = useContext(AuthContext);
+  const { isLoggedIn, userRoles, logout,userCategories } = useContext(AuthContext);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -15,11 +15,13 @@ export default function LoginScreen() {
         : [];
 
     console.log('Zistené roly:', roles);
+    console.log('Zistené roly2:', userRoles);
+    console.log('Zistené kategorie:', userCategories);
 
-    if (roles.includes('player')) {
-      router.replace('/tabs-player');
-    } else if (roles.includes('coach')) {
+    if (roles.includes('coach')) {
       router.replace('/tabs-coach');
+    } else if (roles.includes('player')) {
+      router.replace('/tabs-player');
     } else if (roles.includes('admin')) {
       router.replace('/tabs-admin');
     } else {

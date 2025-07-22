@@ -164,7 +164,6 @@ export const AuthProvider = ({ children }: Props) => {
         await AsyncStorage.removeItem('userClub');
       }
       await AsyncStorage.setItem('userDetails', JSON.stringify(userDetails));
-
       setUserDetailsState(userDetails);
       setAccessToken(access);
       setUserRolesState(roles);

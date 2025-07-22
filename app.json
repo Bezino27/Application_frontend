@@ -2,7 +2,7 @@
   "expo": {
     "name": "Ludimus",
     "slug": "ludimus",
-    "version": "1.0.2",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/images/ludimus-notr-black.png",
     "scheme": "ludimus",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ludimus.app",
-      "buildNumber": "1.0.2",
+      "buildNumber": "1.0.4",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -35,7 +35,6 @@
         }
       ],
       "expo-web-browser"
-
     ],
     "experiments": {
       "typedRoutes": true
@@ -43,9 +42,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "f4c5d722-59ae-4c68-8f76-d2ec13daf64e"
+        "projectId": "cabf6585-9fca-4e14-9520-62521cf6b5ab"
       }
-    }
-    }
+    },
+    "owner": "kurri"
   }
-
+}

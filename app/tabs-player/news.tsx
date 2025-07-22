@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useContext, useCallback } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
-import { AuthContext, UserRole } from '@/context/AuthContext';
+import { AuthContext } from '@/context/AuthContext';
 import { BASE_URL } from '@/hooks/api';
 import { useFetchWithAuth } from '@/hooks/fetchWithAuth';
 import { useRouter } from 'expo-router';
@@ -20,20 +20,12 @@ type Training = {
 };
 
 export default function TreningyScreen() {
-  const { isLoggedIn, userCategories, userRoles, accessToken } = useContext(AuthContext);
+  const { isLoggedIn, userCategories, accessToken } = useContext(AuthContext);
   const { fetchWithAuth } = useFetchWithAuth();
   const router = useRouter();
 
   const [trainings, setTrainings] = useState<Training[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // 🔧 Správne porovnávanie roly + ochrana
-  const coachCategories = [...new Set(
-      userRoles
-          .filter((r: UserRole) => r.role === 'coach')
-          .map((r: UserRole) => r.category?.name)
-          .filter(Boolean)
-  )];
 
   const fetchTrainings = useCallback(async () => {
     try {
@@ -138,7 +130,6 @@ export default function TreningyScreen() {
 
               {trainings.map((t) => {
                 const dateObj = new Date(t.date);
-                const isCoachInThisCategory = coachCategories.includes(t.category_name);
                 const formattedDate = dateObj.toLocaleDateString("sk-SK", {
                   weekday: "long",
                   year: "numeric",
@@ -188,8 +179,8 @@ export default function TreningyScreen() {
                       <Text>❓ Nehlasovalo: {t.attendance_summary.unknown}</Text>
 
                       <View style={{ flexDirection: 'row', marginTop: 10, gap: 10 }}>
-                        {canChangeStatus && !isCoachInThisCategory ? (
-                            <View style={{ flexDirection: 'row', marginTop: 10, gap: 10 }}>
+                        {canChangeStatus ? (
+                            <View style={{ flexDirection: 'row', gap: 10 }}>
                               {["present", "absent"].map((status) => {
                                 const label = status === "present" ? "Prídem" : "Neprídem";
                                 const backgroundColor =
@@ -218,9 +209,7 @@ export default function TreningyScreen() {
                             </View>
                         ) : (
                             <Text style={{ marginTop: 10, color: 'gray', fontStyle: 'italic' }}>
-                              {isCoachInThisCategory
-                                  ? "Ako tréner nemôžeš hlasovať v tejto kategórii"
-                                  : "Zmena účasti už nie je možná (menej ako 3 hodiny pred tréningom)"}
+                              Zmena účasti už nie je možná (menej ako 3 hodiny pred tréningom)
                             </Text>
                         )}
                       </View>

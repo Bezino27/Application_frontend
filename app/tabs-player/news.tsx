@@ -20,7 +20,7 @@ type Training = {
 };
 
 export default function TreningyScreen() {
-  const { isLoggedIn, userCategories, userRoles } = useContext(AuthContext);
+  const { isLoggedIn, userCategories, userRoles, accessToken } = useContext(AuthContext);
   const { fetchWithAuth } = useFetchWithAuth();
 
   const [trainings, setTrainings] = useState<Training[]>([]);
@@ -46,10 +46,26 @@ export default function TreningyScreen() {
   }, [fetchWithAuth]);
 
   useEffect(() => {
-    if (isLoggedIn) {
-      fetchTrainings();
-    }
-  }, [isLoggedIn, fetchTrainings]);
+    const fetchData = async () => {
+      if (isLoggedIn && accessToken) {
+        await fetchTrainings();
+
+        const meResponse = await fetch(`${BASE_URL}/me/`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+
+        if (!meResponse.ok) {
+          console.error("Nepodarilo sa načítať me info", meResponse.status);
+          return; // alebo Alert, ak chceš
+        }
+
+        const meData = await meResponse.json();
+        console.log("📥 meData.roles:", meData.roles);
+      }
+    };
+
+    fetchData();
+  }, [isLoggedIn]);
 
   const handleAttendanceChange = async (
       trainingId: number,

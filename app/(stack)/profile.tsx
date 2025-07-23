@@ -13,10 +13,8 @@ import { useRouter } from "expo-router";
 export default function ProfileScreen() {
     const {
         isLoggedIn,
-        logout,
         userClub,
         userRoles,
-        userCategories,
         userDetails,
         currentRole,
         setCurrentRole,

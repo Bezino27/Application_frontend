@@ -1,24 +1,16 @@
-import 'react-native-gesture-handler'; // musí byť úplne hore
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Slot } from 'expo-router';
-import { AuthProvider } from '@/context/AuthContext'; // alebo tvoja cesta
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { View, StyleSheet } from 'react-native';
+import { AuthProvider } from '@/context/AuthContext';
+import { Provider as PaperProvider } from 'react-native-paper';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
-export default function App() {
+export default function RootLayout() {
     return (
-        <GestureHandlerRootView style={styles.container}>
-            <SafeAreaProvider>
-                <AuthProvider>
+        <PaperProvider>
+            <AuthProvider>
+                <ErrorBoundary>
                     <Slot />
-                </AuthProvider>
-            </SafeAreaProvider>
-        </GestureHandlerRootView>
+                </ErrorBoundary>
+            </AuthProvider>
+        </PaperProvider>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-});

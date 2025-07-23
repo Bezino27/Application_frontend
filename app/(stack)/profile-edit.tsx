@@ -1,8 +1,8 @@
 import React, { useContext, useState } from "react";
 import { SafeAreaView, StyleSheet, ScrollView, Text, View, TextInput, Button, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { AuthContext } from "../context/AuthContext";
-import { BASE_URL } from "../hooks/api";
+import { AuthContext } from "@/context/AuthContext";
+import { BASE_URL } from "@/hooks/api";
 
 export default function ProfileEditScreen() {
   const router = useRouter();

@@ -18,11 +18,10 @@ export default function AdminTabsLayout() {
                 ),
             }}
         >
-
-
             <Tabs.Screen
                 name="news"
                 options={{
+                    title: "Moje Udalosti",
                     headerTitle: () => (
                         <Image
                             source={require('@/assets/images/moje udalosti.png')}
@@ -30,7 +29,14 @@ export default function AdminTabsLayout() {
                         />
                     ),
                     tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="people" color={color} size={size} />
+                        <Image
+                            source={require('@/assets/images/moje_udalosti_ico.png')}
+                            style={{
+                                width: size,
+                                height: size,
+                                tintColor: color, // umožní automatickú zmenu farby podľa aktívnosti tabu
+                            }}
+                        />
                     ),
                 }}
             />

@@ -8,6 +8,11 @@ import {
   TouchableOpacity,
   View,
   Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { AuthContext } from '@/context/AuthContext';
 import { loginWithCredentials } from '@/hooks/authHelpers';
@@ -52,42 +57,53 @@ export default function LoginScreen() {
   };
 
   return (
-      <View style={styles.container}>
-        <View style={styles.logoContainer}>
-          <Image source={require('@/assets/images/nazov-black.png')} style={styles.logotitle} />
-          <Image source={require('@/assets/images/ludimus.png')} style={styles.logo} />
-        </View>
+      <KeyboardAvoidingView
+          style={{ flex: 1 , backgroundColor: '#e0e0e0'}}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
 
-        <Text style={styles.title}>Vitaj späť 👋</Text>
-        <Text style={styles.subtitle}>Prihlás sa do systému</Text>
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <ScrollView
+              contentContainerStyle={[styles.container, { flexGrow: 1 }]}
+              keyboardShouldPersistTaps="handled"
+          >
+          <View style={styles.logoContainer}>
+            <Image source={require('@/assets/images/nazov-black.png')} style={styles.logotitle} />
+            <Image source={require('@/assets/images/ludimus.png')} style={styles.logo} />
+          </View>
 
-        <TextInput
-            placeholder="Používateľské meno"
-            value={username}
-            onChangeText={setUsername}
-            autoCapitalize="none"
-            placeholderTextColor="#999"
-            style={styles.input}
-        />
-        <TextInput
-            placeholder="Heslo"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            placeholderTextColor="#999"
-            style={styles.input}
-        />
+          <Text style={styles.title}>Vitaj späť 👋</Text>
+          <Text style={styles.subtitle}>Prihlás sa do systému</Text>
 
-        {error && <Text style={styles.error}>{error}</Text>}
+          <TextInput
+              placeholder="Používateľské meno"
+              value={username}
+              onChangeText={setUsername}
+              autoCapitalize="none"
+              placeholderTextColor="#999"
+              style={styles.input}
+          />
+          <TextInput
+              placeholder="Heslo"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              placeholderTextColor="#999"
+              style={styles.input}
+          />
 
-        {loading ? (
-            <ActivityIndicator size="large" color="#000" />
-        ) : (
-            <TouchableOpacity onPress={handleLogin} style={styles.button}>
-              <Text style={styles.buttonText}>Prihlásiť sa</Text>
-            </TouchableOpacity>
-        )}
-      </View>
+          {error && <Text style={styles.error}>{error}</Text>}
+
+          {loading ? (
+              <ActivityIndicator size="large" color="#000" />
+          ) : (
+              <TouchableOpacity onPress={handleLogin} style={styles.button}>
+                <Text style={styles.buttonText}>Prihlásiť sa</Text>
+              </TouchableOpacity>
+          )}
+          </ScrollView>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
   );
 }
 

@@ -74,69 +74,68 @@ export default function TrainingDetailScreen() {
     });
 
     return (
-        <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.container}>
-            <TouchableOpacity
-                style={styles.backButton}
-                onPress={() => {
-                    if (router.canGoBack()) {
-                        router.back();
-                    } else {
-                        router.push("/tabs-player/news"); // ← alebo kam chceš nasmerovať späť
-                    }
-                }}
-            >
-                <Ionicons name="arrow-back" size={20} color="#007AFF" />
-                <Text style={styles.backText}>Späť na všetky tréningy</Text>
-            </TouchableOpacity>
+        <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
+            <ScrollView contentContainerStyle={styles.container}>
 
-            <View style={styles.card}>
-                <Text style={styles.title}>{training.description || "Tréning"}</Text>
-                <Text style={styles.detail}>📅 {formattedDate}</Text>
-                <Text style={styles.detail}>📍 {training.location}</Text>
-                <Text style={styles.detail}>👤 Vytvoril: {training.created_by}</Text>
-            </View>
+                <TouchableOpacity
+                    style={styles.backButton}
+                    onPress={() => {
+                        if (router.canGoBack()) {
+                            router.back();
+                        } else {
+                            router.push("/tabs-player/news"); // ← alebo kam chceš nasmerovať späť
+                        }
+                    }}
+                >
+                </TouchableOpacity>
 
-            {["present", "absent", "unknown"].map((statusKey) => {
-                const statusMap = {
-                    present: "✅ Prídu",
-                    absent: "❌ Neprídu",
-                    unknown: "❓ Nezodpovedané",
-                };
+                <View style={styles.card}>
+                    <Text style={styles.title}>{training.description || "Tréning"}</Text>
+                    <Text style={styles.detail}>📅 {formattedDate}</Text>
+                    <Text style={styles.detail}>📍 {training.location}</Text>
+                    <Text style={styles.detail}>👤 Vytvoril: {training.created_by}</Text>
+                </View>
 
-                const players = training.players[statusKey as keyof typeof training.players];
+                {["present", "absent", "unknown"].map((statusKey) => {
+                    const statusMap = {
+                        present: "✅ Prídu",
+                        absent: "❌ Neprídu",
+                        unknown: "❓ Nezodpovedané",
+                    };
 
-                return (
-                    <View key={statusKey} style={styles.section}>
-                        <Text style={styles.sectionTitle}>{statusMap[statusKey as keyof typeof statusMap]}</Text>
-                        {players.length === 0 ? (
-                            <Text style={styles.noPlayer}>– nikto –</Text>
-                        ) : (
-                            players.map((p) => {
-                                const colorStyle =
-                                    statusKey === "present"
-                                        ? styles.green
-                                        : statusKey === "absent"
-                                            ? styles.red
-                                            : styles.gray;
+                    const players = training.players[statusKey as keyof typeof training.players];
 
-                                const year = p.birth_date ? ` (${p.birth_date.slice(0, 4)})` : "";
-                                const number = p.number ? `${p.number}` : "–";
+                    return (
+                        <View key={statusKey} style={styles.section}>
+                            <Text style={styles.sectionTitle}>{statusMap[statusKey as keyof typeof statusMap]}</Text>
+                            {players.length === 0 ? (
+                                <Text style={styles.noPlayer}>– nikto –</Text>
+                            ) : (
+                                players.map((p) => {
+                                    const colorStyle =
+                                        statusKey === "present"
+                                            ? styles.green
+                                            : statusKey === "absent"
+                                                ? styles.red
+                                                : styles.gray;
 
-                                return (
-                                    <View key={p.id} style={styles.playerRow}>
-                                        <Text style={[styles.playerNumber, colorStyle]}>{number}</Text>
-                                        <Text style={[styles.playerName, colorStyle]}>
-                                            {p.name}{year}
-                                        </Text>
-                                    </View>
-                                );
-                            })
-                        )}
-                    </View>
-                );
-            })}
-        </ScrollView>
+                                    const year = p.birth_date ? ` (${p.birth_date.slice(0, 4)})` : "";
+                                    const number = p.number ? `${p.number}` : "–";
+
+                                    return (
+                                        <View key={p.id} style={styles.playerRow}>
+                                            <Text style={[styles.playerNumber, colorStyle]}>{number}</Text>
+                                            <Text style={[styles.playerName, colorStyle]}>
+                                                {p.name}{year}
+                                            </Text>
+                                        </View>
+                                    );
+                                })
+                            )}
+                        </View>
+                    );
+                })}
+            </ScrollView>
         </SafeAreaView>
     );
 }
@@ -169,6 +168,7 @@ const styles = StyleSheet.create({
     container: {
         flexGrow: 1,
         padding: 20,
+        paddingTop: 0,
         backgroundColor: "#e0e0e0", // svetlošedé pozadie aplikácie
     },
     card: {

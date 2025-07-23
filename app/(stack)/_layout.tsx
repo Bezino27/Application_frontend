@@ -11,6 +11,22 @@ export default function StackLayout() {
             }}
         >
             <Stack.Screen
+                name="training/[id]"
+                options={({ navigation }) => ({
+                    headerTitle: "📝 Tréning",
+                    headerLeft: () => (
+                        <TouchableOpacity
+                            onPress={() => navigation.goBack()}
+                            style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 12 }}
+                        >
+                            <Ionicons name="arrow-back" size={22} color="#007AFF" />
+                            <Text style={{ marginLeft: 4, fontSize: 16, color: '#007AFF' }}>Späť</Text>
+                        </TouchableOpacity>
+                    ),
+                })}
+            />
+
+            <Stack.Screen
                 name="profile"
                 options={({ navigation }) => ({
                     headerTitle: () => (
@@ -33,6 +49,9 @@ export default function StackLayout() {
                     ),
                 })}
             />
+
+
+
         </Stack>
     );
 }

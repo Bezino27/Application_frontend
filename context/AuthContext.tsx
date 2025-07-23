@@ -2,7 +2,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, ReactNode, useEffect, useState } from 'react';
 import { BASE_URL } from '@/hooks/api';
 
-// 🔁 Nový typ pre rolu používateľa
 export type UserRole = {
   role: string;
   category: {
@@ -50,6 +49,8 @@ type AuthContextType = {
   setUserCategories: (categories: string[]) => Promise<void>;
   userDetails: UserDetails | null;
   setUserDetails: (details: UserDetails | null) => Promise<void>;
+  currentRole: UserRole | null;
+  setCurrentRole: (role: UserRole | null) => Promise<void>;
 };
 
 export const AuthContext = createContext<AuthContextType>({
@@ -66,6 +67,8 @@ export const AuthContext = createContext<AuthContextType>({
   setUserCategories: async () => {},
   setUserDetails: async () => {},
   refreshAccessToken: async () => null,
+  currentRole: null,
+  setCurrentRole: async () => {},
 });
 
 type Props = {
@@ -79,6 +82,7 @@ export const AuthProvider = ({ children }: Props) => {
   const [userClub, setUserClubState] = useState<Club | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userDetails, setUserDetailsState] = useState<UserDetails | null>(null);
+  const [currentRole, setCurrentRoleState] = useState<UserRole | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -88,8 +92,8 @@ export const AuthProvider = ({ children }: Props) => {
         const categoriesStr = await AsyncStorage.getItem('userCategories');
         const clubStr = await AsyncStorage.getItem('userClub');
         const detailsStr = await AsyncStorage.getItem('userDetails');
-        console.log("userRoles", userRoles);
-        console.log("userRoles", JSON.stringify(userRoles));
+        const currentRoleStr = await AsyncStorage.getItem('currentRole');
+
         setAccessToken(token);
 
         if (rolesStr) {
@@ -129,6 +133,16 @@ export const AuthProvider = ({ children }: Props) => {
           } catch {
             console.warn('userDetails JSON parse error');
             setUserDetailsState(null);
+          }
+        }
+
+        if (currentRoleStr) {
+          try {
+            const parsed = JSON.parse(currentRoleStr);
+            setCurrentRoleState(parsed);
+          } catch {
+            console.warn('currentRole JSON parse error');
+            setCurrentRoleState(null);
           }
         }
 
@@ -176,12 +190,13 @@ export const AuthProvider = ({ children }: Props) => {
   };
 
   const logout = async () => {
-    await AsyncStorage.multiRemove(['access', 'refresh', 'userRoles', 'userCategories', 'userClub', 'userDetails']);
+    await AsyncStorage.multiRemove(['access', 'refresh', 'userRoles', 'userCategories', 'userClub', 'userDetails', 'currentRole']);
     setAccessToken(null);
     setUserRolesState([]);
     setUserCategoriesState([]);
     setUserClubState(null);
     setUserDetailsState(null);
+    setCurrentRoleState(null);
   };
 
   const updateUserRoles = async (roles: UserRole[]) => {
@@ -209,6 +224,15 @@ export const AuthProvider = ({ children }: Props) => {
       await AsyncStorage.setItem('userDetails', JSON.stringify(details));
     } else {
       await AsyncStorage.removeItem('userDetails');
+    }
+  };
+
+  const updateCurrentRole = async (role: UserRole | null) => {
+    setCurrentRoleState(role);
+    if (role) {
+      await AsyncStorage.setItem('currentRole', JSON.stringify(role));
+    } else {
+      await AsyncStorage.removeItem('currentRole');
     }
   };
 
@@ -256,6 +280,8 @@ export const AuthProvider = ({ children }: Props) => {
             setUserClub: updateUserClub,
             setUserDetails: updateUserDetails,
             refreshAccessToken,
+            currentRole,
+            setCurrentRole: updateCurrentRole,
           }}
       >
         {children}

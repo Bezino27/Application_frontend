@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
-import { View, Text, Button } from "react-native";
+import { View, Text, Button, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import { AuthContext } from "../../context/AuthContext";
 
@@ -29,6 +29,13 @@ export default function TabsIndex() {
   return (
     <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
       <Text>Stratil si sa</Text>
+      <TouchableOpacity
+          onPress={() =>
+              router.push({ pathname: "/select-role"})
+          }
+      >
+        <Text>TU</Text>
+      </TouchableOpacity>
       <Button title="Odhlásiť sa" onPress={logout} />
     </View>
   );

@@ -18,6 +18,8 @@ export default function ProfileScreen() {
         userRoles,
         userCategories,
         userDetails,
+        currentRole,
+        setCurrentRole,
     } = useContext(AuthContext);
 
     const router = useRouter();
@@ -33,12 +35,12 @@ export default function ProfileScreen() {
         }
     }, [isLoggedIn, mounted]);
 
-    const handleRoleChange = (routeKey: string) => {
-        router.replace(`/tabs-${routeKey}`);
-    };
-
-    const handleEditProfile = () => {
-        router.push("/profile-edit");
+    const handleRoleChange = (routeKey: string, role: string) => {
+        const selected = userRoles.find(r => r.role.toLowerCase() === role);
+        if (selected) {
+            setCurrentRole(selected);
+            router.replace(`/tabs-${routeKey}`);
+        }
     };
 
     if (!isLoggedIn) {
@@ -48,6 +50,11 @@ export default function ProfileScreen() {
             </View>
         );
     }
+
+    // Zlúčenie rolí podľa typu
+    const groupedRoles = Array.from(
+        new Map(userRoles.map(r => [r.role.toLowerCase(), r])).values()
+    );
 
     return (
         <SafeAreaView style={styles.safeArea} edges={["left", "right", "bottom"]}>
@@ -65,14 +72,8 @@ export default function ProfileScreen() {
                     <ProfileRow label="Email" value={userDetails?.email} />
                     <ProfileRow label="Alternatívny email" value={userDetails?.email_2} />
                     <ProfileRow label="Dátum narodenia" value={userDetails?.birth_date} />
-                    <ProfileRow
-                        label="Výška"
-                        value={userDetails?.height ? `${userDetails.height} cm` : undefined}
-                    />
-                    <ProfileRow
-                        label="Váha"
-                        value={userDetails?.weight ? `${userDetails.weight} kg` : undefined}
-                    />
+                    <ProfileRow label="Výška" value={userDetails?.height ? `${userDetails.height} cm` : undefined} />
+                    <ProfileRow label="Váha" value={userDetails?.weight ? `${userDetails.weight} kg` : undefined} />
                     <ProfileRow label="Strana hokejky" value={userDetails?.side} />
                     <ProfileRow label="Číslo na drese" value={userDetails?.number} />
                     <ProfileRow label="Klub" value={userClub?.name} />
@@ -80,25 +81,24 @@ export default function ProfileScreen() {
 
                 <Text style={styles.subheading}>📂  Roly</Text>
                 <View style={styles.rolesContainer}>
-                    {userRoles.map((r: any, index: number) => {
-                        const roleKey = typeof r.role === "string" ? r.role.toLowerCase() : "";
+                    {groupedRoles.map((r, index) => {
+                        const roleKey = r.role.toLowerCase();
                         const routeKey =
-                            roleKey === "tréner"
-                                ? "coach"
-                                : roleKey === "hráč"
-                                    ? "player"
-                                    : roleKey === "rodič"
-                                        ? "parent"
+                            roleKey === "tréner" ? "coach"
+                                : roleKey === "hráč" ? "player"
+                                    : roleKey === "rodič" ? "parent"
                                         : roleKey;
+
+                        const isActive = currentRole?.role?.toLowerCase() === roleKey;
 
                         return (
                             <TouchableOpacity
                                 key={index}
-                                style={styles.chipButton}
-                                onPress={() => handleRoleChange(routeKey)}
+                                style={[styles.chipButton, isActive && styles.activeChip]}
+                                onPress={() => handleRoleChange(routeKey, roleKey)}
                             >
-                                <Text style={styles.chipButtonText}>
-                                    {`${r.category.name} - ${r.role.toUpperCase()}`}
+                                <Text style={[styles.chipButtonText, isActive && styles.activeChipText]}>
+                                    {r.role.toUpperCase()}
                                 </Text>
                             </TouchableOpacity>
                         );
@@ -182,30 +182,25 @@ const styles = StyleSheet.create({
     },
     rolesContainer: {
         flexDirection: "column",
-        flexWrap: "wrap",
         gap: 10,
         marginBottom: 20,
     },
     chipButton: {
-        display: "flex",
-        backgroundColor: "#4c68d7",
+        backgroundColor: "#D32F2F",
         paddingHorizontal: 12,
-        paddingVertical: 6,
+        paddingVertical: 8,
         borderRadius: 20,
     },
     chipButtonText: {
         color: "#fff",
         fontWeight: "600",
+        textAlign: "center",
     },
-    chipGray: {
-        backgroundColor: "#e0e0e0",
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
+    activeChip: {
+        backgroundColor: "#2c3eb5",
     },
-    chipTextDark: {
-        color: "#111",
-        fontWeight: "500",
+    activeChipText: {
+        color: "#fff",
     },
     centered: {
         flex: 1,

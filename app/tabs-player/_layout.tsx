@@ -66,6 +66,29 @@ export default function AdminTabsLayout() {
                 }}
             />
 
+            <Tabs.Screen
+                name="matches"
+                options={{
+                    title: "Zápasy",
+                    headerTitle: () => (
+                        <Image
+                            source={require('@/assets/images/matches.png')}
+                            style={{ width: 180, height: 35, resizeMode: 'contain' }}
+                        />
+                    ),
+                    tabBarIcon: ({ color, size }) => (
+                        <Image
+                            source={require('@/assets/images/match_ico.png')}
+                            style={{
+                                width: size,
+                                height: size,
+                                tintColor: color, // umožní automatickú zmenu farby podľa aktívnosti tabu
+                            }}
+                        />
+                    ),
+                }}
+            />
+
         </Tabs>
 
     );

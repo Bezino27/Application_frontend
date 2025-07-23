@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext, useCallback } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import {View, Text, ScrollView, ActivityIndicator, TouchableOpacity, Alert, StyleSheet} from 'react-native';
 import { AuthContext} from '@/context/AuthContext';
 import { BASE_URL } from '@/hooks/api';
 import { useFetchWithAuth } from '@/hooks/fetchWithAuth';
@@ -115,13 +115,15 @@ export default function TreningyScreen() {
     return <ActivityIndicator style={{ marginTop: 50 }} />;
   }
 
-  const groupedTrainings = (userCategories || []).reduce((acc, category) => {
-    if (!category || typeof category !== 'string') return acc;
-    const filtered = trainings.filter((t) => t.category_name === category);
-    if (filtered.length > 0) acc[category] = filtered;
-    return acc;
-  }, {} as Record<string, Training[]>);
-
+  const groupedTrainings = (userRoles || [])
+      .filter(r => r.role.toLowerCase() === 'player' || r.role.toLowerCase() === 'hráč')
+      .map(r => r.category.name)
+      .filter((v, i, a) => a.indexOf(v) === i) // unikátne kategórie
+      .reduce((acc, category) => {
+        const filtered = trainings.filter((t) => t.category_name === category);
+        if (filtered.length > 0) acc[category] = filtered;
+        return acc;
+      }, {} as Record<string, Training[]>);
   console.log("🧪 userCategories:", userCategories);
   console.log("🧪 training.category_name:", trainings.map(t => t.category_name));
 
@@ -177,9 +179,9 @@ export default function TreningyScreen() {
                         {formattedTime} - {formattedDate}
                       </Text>
 
-                      <Text>✅ Príde: {t.attendance_summary.present}</Text>
-                      <Text>❌ Nepríde: {t.attendance_summary.absent}</Text>
-                      <Text>❓ Nehlasovalo: {t.attendance_summary.unknown}</Text>
+                      <Text style={styles.attendance}>✅ Príde: {t.attendance_summary.present}</Text>
+                      <Text style={styles.attendance}>❌ Nepríde: {t.attendance_summary.absent}</Text>
+                      <Text style={styles.attendance}>❓ Nehlasovalo: {t.attendance_summary.unknown}</Text>
 
                       <View style={{ flexDirection: 'row', marginTop: 10, gap: 10 }}>
                         {canChangeStatus ? (
@@ -224,3 +226,11 @@ export default function TreningyScreen() {
       </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  attendance: {
+    fontSize: 15,
+    lineHeight: 20,       // väčší vertikálny odstup medzi riadkami textu
+    marginBottom: 6,      // medzera medzi jednotlivými Text komponentami
+  }
+});

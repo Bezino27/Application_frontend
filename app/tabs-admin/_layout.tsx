@@ -1,37 +1,72 @@
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-
+import { TouchableOpacity, Image } from 'react-native';
 export default function AdminTabsLayout() {
-  return (
-    <Tabs>
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profil',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-circle" color={color} size={size} />
-          ),
-        }}
-      />
+    const router = useRouter();
 
-      <Tabs.Screen
-        name="category"
-        options={{
-          title: 'Kategórie',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="list" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="select-role"
-        options={{
-          title: 'Výber roly',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="list" color={color} size={size} />
-          ),
-        }}
-      />
-    </Tabs>
-  );
+    return (
+        <Tabs
+            screenOptions={{
+                headerRight: () => (
+                    <TouchableOpacity
+                        onPress={() => router.navigate('/(stack)/profile')}
+                        style={{ marginRight: 15 }}
+                    >
+
+                        <Ionicons name="person-circle-outline" size={26} color="#000" />
+                    </TouchableOpacity>
+                ),
+            }}
+        >
+
+
+            <Tabs.Screen
+                name="news"
+                options={{
+                    title: "Moje Udalosti",
+                    headerTitle: () => (
+                        <Image
+                            source={require('@/assets/images/moje udalosti.png')}
+                            style={{ width: 180, height: 50, resizeMode: 'contain' }}
+                        />
+                    ),
+                    tabBarIcon: ({ color, size }) => (
+                        <Image
+                            source={require('@/assets/images/moje_udalosti_ico.png')}
+                            style={{
+                                width: size,
+                                height: size,
+                                tintColor: color, // umožní automatickú zmenu farby podľa aktívnosti tabu
+                            }}
+                        />
+                    ),
+                }}
+            />
+
+            <Tabs.Screen
+                name="trainings"
+                options={{
+                    title: "Tréningy",
+                    headerTitle: () => (
+                        <Image
+                            source={require('@/assets/images/trainings.png')}
+                            style={{ width: 180, height: 30, resizeMode: 'contain' }}
+                        />
+                    ),
+                    tabBarIcon: ({ color, size }) => (
+                        <Image
+                            source={require('@/assets/images/trainings_ico.png')}
+                            style={{
+                                width: size,
+                                height: size,
+                                tintColor: color, // umožní automatickú zmenu farby podľa aktívnosti tabu
+                            }}
+                        />
+                    ),
+                }}
+            />
+
+        </Tabs>
+
+    );
 }

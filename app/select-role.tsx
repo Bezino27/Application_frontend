@@ -18,10 +18,10 @@ export default function LoginScreen() {
     console.log('Zistené roly2:', userRoles);
     console.log('Zistené kategorie:', userCategories);
 
-    if (roles.includes('coach')) {
-      router.replace('/tabs-coach');
-    } else if (roles.includes('player')) {
+    if (roles.includes('player')) {
       router.replace('/tabs-player');
+    } else if (roles.includes('coach')) {
+      router.replace('/tabs-coach');
     } else if (roles.includes('admin')) {
       router.replace('/tabs-admin');
     } else {

@@ -49,25 +49,6 @@ export default function ProfileScreen() {
         );
     }
 
-    const currentPath = router.pathname;
-    const currentRole = currentPath.includes("coach")
-        ? "coach"
-        : currentPath.includes("player")
-            ? "player"
-            : currentPath.includes("admin")
-                ? "admin"
-                : currentPath.includes("parent")
-                    ? "parent"
-                    : "";
-
-    // Zoskupenie unikátnych rolí podľa typu
-    const filteredRoles = userRoles.filter((role: any, index: number, self: any[]) => {
-        if (role.role === "hráč" || role.role === "player") {
-            return self.findIndex(r => r.role === role.role) === index;
-        }
-        return true;
-    });
-
     return (
         <SafeAreaView style={styles.safeArea} edges={["left", "right", "bottom"]}>
             <ScrollView contentContainerStyle={styles.container}>
@@ -99,7 +80,7 @@ export default function ProfileScreen() {
 
                 <Text style={styles.subheading}>📂  Roly</Text>
                 <View style={styles.rolesContainer}>
-                    {filteredRoles.map((r: any, index: number) => {
+                    {userRoles.map((r: any, index: number) => {
                         const roleKey = typeof r.role === "string" ? r.role.toLowerCase() : "";
                         const routeKey =
                             roleKey === "tréner"
@@ -110,15 +91,13 @@ export default function ProfileScreen() {
                                         ? "parent"
                                         : roleKey;
 
-                        const isActive = routeKey === currentRole;
-
                         return (
                             <TouchableOpacity
                                 key={index}
-                                style={[styles.chipButton, isActive && styles.activeChipButton]}
+                                style={styles.chipButton}
                                 onPress={() => handleRoleChange(routeKey)}
                             >
-                                <Text style={[styles.chipButtonText, isActive && styles.activeChipButtonText]}>
+                                <Text style={styles.chipButtonText}>
                                     {`${r.category.name} - ${r.role.toUpperCase()}`}
                                 </Text>
                             </TouchableOpacity>
@@ -214,16 +193,9 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
         borderRadius: 20,
     },
-    activeChipButton: {
-        backgroundColor: "#1E88E5",
-    },
     chipButtonText: {
         color: "#fff",
         fontWeight: "600",
-    },
-    activeChipButtonText: {
-        color: "#fff",
-        fontWeight: "bold",
     },
     chipGray: {
         backgroundColor: "#e0e0e0",

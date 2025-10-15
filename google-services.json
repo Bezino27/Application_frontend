@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "394503893290",
+    "project_id": "ludimus-460fa",
+    "storage_bucket": "ludimus-460fa.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:394503893290:android:95ac69ac30477e8e716e53",
+        "android_client_info": {
+          "package_name": "com.ludimus.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDIGZ7TV7EYLh3eShfm5LHtbdA_wy95MFw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+node_modules 2/
+
+# Native iOS/Android folders
+android/
+ios/
+
+# Expo & cache
+.expo/
+.expo-shared/
+dist/
+web-build/
+.expo-env.d.ts
+.metro-cache/
+
+# Env a citlivé údaje
+.env
+.env.*.local
+credentials/
+credentials.json
+upload-key.jks
+upload_cert.pem
+
+# Logy a systémové
+.DS_Store
+Thumbs.db
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.tsbuildinfo
+
+# VSCode & JetBrains
+.vscode/
+.idea/
+
+# EAS build temp
+expo-env.d.ts
+
+# Ostatné
+scripts/

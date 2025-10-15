@@ -1,0 +1,61 @@
+{
+  "expo": {
+    "name": "Ludimus",
+    "slug": "ludimus",
+    "version": "2.1.3",
+    "orientation": "portrait",
+    "icon": "./assets/images/ludimus-notr-black.png",
+    "scheme": "ludimus",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ludimus.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": ["remote-notification"],
+        "com.apple.developer.user-notifications": true,
+        "aps-environment": "production"
+      }
+
+    },
+    "android": {
+      "softwareKeyboardLayoutMode": "resize",
+      "package": "com.ludimus.app",
+      "versionCode": 8,
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splashscreen_logo.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ],
+      "expo-web-browser",
+      "expo-notifications"
+    ],
+
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "cabf6585-9fca-4e14-9520-62521cf6b5ab",
+        "push": {
+          "experimental": true
+        }
+      }
+    },
+    "owner": "kurri"
+  }
+}

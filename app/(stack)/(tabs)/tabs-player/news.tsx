@@ -1,10 +1,14 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, Alert, StyleSheet, ImageBackground, Image, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, Alert, StyleSheet, ImageBackground, Image, RefreshControl, Modal, TextInput,KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
+  Platform, useColorScheme} from 'react-native';
 import { AuthContext } from '@/context/AuthContext';
 import { BASE_URL } from '@/hooks/api';
 import { useFetchWithAuth } from '@/hooks/fetchWithAuth';
 import { useRouter } from 'expo-router';
 import ProfileCompletionBanner from "@/components/ProfileCompletionBanner";
+
 type Training = {
   id: number;
   description: string;
@@ -41,6 +45,17 @@ type Match = {
 
 export default function TreningyScreen() {
   const [refreshing, setRefreshing] = useState(false);
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
+
+  const themeColors = {
+    background: isDarkMode ? '#121212' : '#f4f4f8',
+    card: isDarkMode ? '#1E1E1E' : '#fff',
+    text: isDarkMode ? '#fff' : '#000',
+    secondaryText: isDarkMode ? '#aaa' : '#333',
+    accent: '#D32F2F',
+    border: isDarkMode ? '#333' : '#ccc',
+  };
 
   const {
     isLoggedIn,
@@ -55,14 +70,15 @@ export default function TreningyScreen() {
   const { userDetails } = useContext(AuthContext);
   const [trainings, setTrainings] = useState<Training[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [showReasonModal, setShowReasonModal] = useState(false);
+  const [selectedTrainingId, setSelectedTrainingId] = useState<number | null>(null);
+  const [selectedReason, setSelectedReason] = useState<string | null>(null);
+  const [customReason, setCustomReason] = useState('');
   const fetchTrainings = async () => {
     try {
       const res = await fetchWithAuth(`${BASE_URL}/player-trainings/`);
       const data = await res.json();
-      const now = new Date();
-      const upcomingTrainings: Training[] = data.filter((t: Training) => new Date(t.date) > now);
-      setTrainings(upcomingTrainings);
+      setTrainings(data);
     } catch (error) {
       console.error('fetchTrainings error:', error);
     } finally {
@@ -76,9 +92,7 @@ export default function TreningyScreen() {
     try {
       const res = await fetchWithAuth(`${BASE_URL}/player-nominated-matches/`);
       const data = await res.json();
-      const now = new Date();
-      const futureMatches: Match[] = data.filter((m: Match) => new Date(m.date) > now);
-      setMatches(futureMatches);
+      setMatches(data);
     } catch (error) {
       console.error('fetchMatches error:', error);
     }
@@ -324,6 +338,7 @@ export default function TreningyScreen() {
                   minute: '2-digit',
                   hour12: false,
                 });
+                
                 const now = new Date();
                 const trainingDate = new Date(t.date);
                 const lockHours = userDetails?.club?.training_lock_hours ?? 0;
@@ -383,31 +398,38 @@ export default function TreningyScreen() {
                         <View style={{ flexDirection: 'row', marginTop: 10, gap: 10 }}>
                           {canChangeStatus ? (
                               <View style={{ flexDirection: 'row', gap: 10 }}>
-                                {['present', 'absent'].map(status => {
-                                  const label = status === 'present' ? 'Prídem' : 'Neprídem';
-                                  const backgroundColor =
-                                      t.user_status === status
-                                          ? status === 'present'
-                                              ? '#4caf50'
-                                              : '#f44336'
-                                          : '#e0e0e0';
-                                  const textColor = t.user_status === status ? '#fff' : '#000';
+                              {['present', 'absent'].map(status => {
+                                const label = status === 'present' ? 'Prídem' : 'Neprídem';
+                                const backgroundColor =
+                                    t.user_status === status
+                                        ? status === 'present'
+                                            ? '#4caf50'
+                                            : '#f44336'
+                                        : '#e0e0e0';
+                                const textColor = t.user_status === status ? '#fff' : '#000';
 
-                                  return (
-                                      <TouchableOpacity
-                                          key={status}
-                                          onPress={() => handleAttendanceChange(t.id, status as any)}
-                                          style={{
+                                return (
+                                    <TouchableOpacity
+                                        key={status}
+                                        onPress={() => {
+                                            if (status === 'absent') {
+                                                setSelectedTrainingId(t.id);
+                                                setShowReasonModal(true);
+                                            } else {
+                                                handleAttendanceChange(t.id, 'present');
+                                            }
+                                        }}
+                                        style={{
                                             backgroundColor,
                                             paddingVertical: 6,
                                             paddingHorizontal: 14,
                                             borderRadius: 20,
-                                          }}
-                                      >
+                                        }}
+                                    >
                                         <Text style={{ color: textColor, fontWeight: '600' }}>{label}</Text>
-                                      </TouchableOpacity>
-                                  );
-                                })}
+                                    </TouchableOpacity>
+                                );
+                              })}
                               </View>
                           ) : (
                               <Text style={{ marginTop: 10, color: 'gray', fontStyle: 'italic' }}>
@@ -425,20 +447,110 @@ export default function TreningyScreen() {
             </View>
         ))}
 
+{showReasonModal && (
+  <Modal
+    transparent
+    animationType="slide"
+    onRequestClose={() => setShowReasonModal(false)}
+  >
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.modalOverlay}
+    >
+      <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Vyber dôvod neprítomnosti</Text>
 
+          {['Škola', 'Práca', 'Choroba', 'Zranenie', 'Tréning v inej kategórii', 'Iné'].map(reason => (
+            <TouchableOpacity
+              key={reason}
+              style={[
+                styles.reasonButton,
+                { backgroundColor: selectedReason === reason ? '#D32F2F' : '#e0e0e0' },
+              ]}
+              onPress={() => setSelectedReason(reason)}
+            >
+              <Text style={{ color: selectedReason === reason ? '#fff' : '#000' }}>
+                {reason}
+              </Text>
+            </TouchableOpacity>
+          ))}
+
+          {selectedReason === 'Iné' && (
+            <TextInput
+              style={styles.input}
+              placeholder="Zadaj dôvod..."
+              placeholderTextColor="#666" // ← lepšia čitateľnosť v dark mode
+              value={customReason}
+              onChangeText={setCustomReason}
+              multiline
+            />
+          )}
+
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 15 }}>
+            <TouchableOpacity
+              onPress={() => {
+                setShowReasonModal(false);
+                setSelectedReason(null);
+                setCustomReason('');
+                Keyboard.dismiss();
+              }}
+              style={[styles.reasonButton, { backgroundColor: '#ccc' }]}
+            >
+              <Text style={{ color: '#000', margin: 7 }}>Zrušiť</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                if (!selectedReason) {
+                  Alert.alert('Chyba', 'Vyber prosím dôvod.');
+                  return;
+                }
+
+                if (selectedReason === 'Iné' && !customReason.trim()) {
+                  Alert.alert('Chyba', 'Prosím, napíš dôvod, keď vyberieš možnosť "Iné".');
+                  return;
+                }
+
+                const finalReason =
+                  selectedReason === 'Iné' ? customReason.trim() : selectedReason;
+
+                handleAttendanceChange(selectedTrainingId!, 'absent', finalReason);
+                setShowReasonModal(false);
+                setSelectedReason(null);
+                setCustomReason('');
+                Keyboard.dismiss();
+              }}
+              style={[styles.reasonButton, { backgroundColor: '#D32F2F' }]}
+            >
+              <Text style={{ color: '#fff', margin: 7 }}>Potvrdiť</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
+  </Modal>
+)}
       </ScrollView>
   );
 
-  async function handleAttendanceChange(
+
+    
+    async function handleAttendanceChange(
       trainingId: number,
-      newStatus: 'present' | 'absent' | 'unknown'
-  ) {
-    try {
-      const res = await fetchWithAuth(`${BASE_URL}/set-training-attendance/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ training_id: trainingId, status: newStatus }),
-      });
+      newStatus: 'present' | 'absent' | 'unknown',
+      reason?: string
+    ) {
+      try {
+        const res = await fetchWithAuth(`${BASE_URL}/set-training-attendance/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            training_id: trainingId,
+            status: newStatus,
+            reason: reason ?? null, // ← odosielame dôvod
+          }),
+        });
 
       if (!res.ok) {
         Alert.alert('Chyba', 'Nepodarilo sa zmeniť status účasti.');
@@ -517,6 +629,40 @@ const styles = StyleSheet.create({
     color: '#555',
     textAlign: 'center',
   },
+  modalOverlay: {
+  flex: 1,
+  backgroundColor: 'rgba(0,0,0,0.5)',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+modalContent: {
+  backgroundColor: '#fff',
+  borderRadius: 10,
+  padding: 20,
+  width: '85%',
+  elevation: 5,
+},
+modalTitle: {
+  fontSize: 18,
+  fontWeight: 'bold',
+  marginBottom: 15,
+  textAlign: 'center',
+},
+reasonButton: {
+  paddingVertical: 10,
+  borderRadius: 8,
+  alignItems: 'center',
+  marginVertical: 5,
+},
+input: {
+  borderWidth: 1,
+  borderColor: '#ccc',
+  borderRadius: 8,
+  padding: 10,
+  marginTop: 10,
+  backgroundColor: '#fff', // ← biele pozadie pre dark mode
+  color: '#000', // ← text bude čierny
+},
 
 });
 

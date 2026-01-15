@@ -77,9 +77,7 @@ export default function TreningyCoachScreen() {
         try {
             const res = await fetchWithAuth(`${BASE_URL}/player-trainings/`);
             const data = await res.json();
-            const now = new Date();
-            const upcomingTrainings = data.filter((t: Training) => new Date(t.date) > now);
-            setTrainings(upcomingTrainings);
+            setTrainings(data);
         } catch (error) {
             console.error("fetchTrainings error:", error);
         } finally {

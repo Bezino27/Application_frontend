@@ -42,6 +42,8 @@ export default function AdminTabsLayout() {
                     paddingTop: insets.top,
                     backgroundColor: "#fff",
                 },
+                tabBarActiveTintColor: '#D32F2F',     // 🔥 farba aktívnej ikony (napr. červená)
+                tabBarInactiveTintColor: '#888888ff',   
                 headerTitleAlign: "center",
                 headerTitleContainerStyle: {
                     justifyContent: "center",

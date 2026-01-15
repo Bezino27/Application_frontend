@@ -47,6 +47,8 @@ type PlayerDetail = {
   position: string | null;
   categories: CategoryStats[];
   trainings: Training[];
+  reason?: { reason: string; count: number }[];
+
 };
 
 const monthNames = [
@@ -243,6 +245,18 @@ export default function PlayerDetailScreen() {
                     </TouchableOpacity>
                   );
                 })}
+
+                                {data.reason && data.reason.length > 0 && (
+                  <View style={styles.absenceBlock}>
+                    <Text style={styles.absenceTitle}>📋 Dôvody neúčasti</Text>
+                    {data.reason.map((item, index) => (
+                      <View key={index} style={styles.absenceRow}>
+                        <Text style={styles.absenceReason}>{item.reason || 'Nezadané'}</Text>
+                        <Text style={styles.absenceCount}>x{item.count}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
           </View>
         );
       })}
@@ -288,4 +302,35 @@ const styles = StyleSheet.create({
   modalContent: { backgroundColor: '#fff', margin: 20, padding: 20, borderRadius: 10 },
   modalItem: { fontSize: 18, paddingVertical: 8 },
   modalClose: { marginTop: 10, textAlign: 'center', color: '#D32F2F', fontWeight: '600' },
+  absenceBlock: {
+  marginTop: 30,
+  padding: 15,
+  backgroundColor: '#fff',
+  borderRadius: 10,
+  elevation: 2,
+},
+absenceTitle: {
+  fontSize: 18,
+  fontWeight: 'bold',
+  color: '#D32F2F',
+  marginBottom: 10,
+},
+absenceRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  paddingVertical: 6,
+  borderBottomWidth: 1,
+  borderBottomColor: '#eee',
+},
+absenceReason: {
+  fontSize: 15,
+  color: '#000',
+  flexShrink: 1,
+},
+absenceCount: {
+  fontSize: 15,
+  fontWeight: 'bold',
+  color: '#555',
+},
+
 });

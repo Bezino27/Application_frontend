@@ -1,22 +1,22 @@
 // app/(stack)/(tabs)/tabs-coach/create_training.tsx
-import React, { useState, useEffect, useContext, useCallback } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  Alert,
-  ScrollView,
-  TouchableOpacity,
-  Platform,
-  StyleSheet,
-} from "react-native";
+import { AuthContext } from "@/context/AuthContext";
+import { BASE_URL } from "@/hooks/api";
+import { useFetchWithAuth } from "@/hooks/fetchWithAuth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
-import { AuthContext } from "@/context/AuthContext";
+import React, { useCallback, useContext, useEffect, useState } from "react";
+import {
+  Alert,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { BASE_URL } from "@/hooks/api";
-import { useFetchWithAuth } from "@/hooks/fetchWithAuth";
 
 type EventType = "training" | "match";
 
@@ -31,7 +31,7 @@ export default function CreateEventScreen() {
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [opponent, setOpponent] = useState(""); // ⭐ len pre zápas
-
+  const [isHome, setIsHome] = useState(true); // ✅ defaultne domáci
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
 
@@ -181,6 +181,7 @@ export default function CreateEventScreen() {
                 category_ids: selectedCategories,
                 date: isoDate,
                 opponent, // 👈 dôležité pre zápas
+                is_home: isHome, 
               };
 
       const res = await fetchWithAuth(`${BASE_URL}${endpoint}`, {
@@ -275,34 +276,46 @@ export default function CreateEventScreen() {
             )}
 
             {/* ⭐ Súper – iba ak je typ „Zápas“ */}
-            {eventType === "match" && (
-                <>
-                  <Text style={styles.label}>Súper</Text>
-                  <TextInput
-                      style={styles.input}
-                      value={opponent}
-                      onChangeText={setOpponent}
-                      placeholder="napr. HK Košice U15"
-                      placeholderTextColor="#999"
-                  />
-                  {opponentSuggestions.length > 0 && (
-                      <View style={styles.suggestionRow}>
-                        {opponentSuggestions.map((o) => (
-                            <SuggestionChip
-                                key={o}
-                                label={o}
-                                onPick={() => setOpponent(o)}
-                                onRemove={async () => {
-                                  const updated = opponentSuggestions.filter((x) => x !== o);
-                                  setOpponentSuggestions(updated);
-                                  await AsyncStorage.setItem("history_opponent", JSON.stringify(updated));
-                                }}
-                            />
-                        ))}
-                      </View>
-                  )}
-                </>
-            )}
+{eventType === "match" && (
+    <>
+      <Text style={styles.label}>Súper</Text>
+      <TextInput
+          style={styles.input}
+          value={opponent}
+          onChangeText={setOpponent}
+          placeholder="napr. HK Košice U15"
+          placeholderTextColor="#999"
+      />
+      {opponentSuggestions.length > 0 && (
+          <View style={styles.suggestionRow}>
+            {opponentSuggestions.map((o) => (
+                <SuggestionChip
+                    key={o}
+                    label={o}
+                    onPick={() => setOpponent(o)}
+                    onRemove={async () => {
+                      const updated = opponentSuggestions.filter((x) => x !== o);
+                      setOpponentSuggestions(updated);
+                      await AsyncStorage.setItem("history_opponent", JSON.stringify(updated));
+                    }}
+                />
+            ))}
+          </View>
+      )}
+
+      {/* ⚙️ Domáci zápas prepínač */}
+      <TouchableOpacity
+          onPress={() => setIsHome((prev) => !prev)}
+          style={styles.checkboxRow}
+      >
+        <View style={[styles.checkbox, isHome && styles.checkboxChecked]}>
+          {isHome && <Text style={styles.checkboxTick}>✓</Text>}
+        </View>
+        <Text style={styles.checkboxLabel}>Domáci zápas</Text>
+      </TouchableOpacity>
+    </>
+)}
+
 
             {/* Miesto */}
             <Text style={styles.label}>Miesto</Text>
@@ -503,4 +516,34 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   submitButtonText: { color: "#fff", fontWeight: "bold", fontSize: 17 },
+  checkboxRow: {
+  flexDirection: "row",
+  alignItems: "center",
+  marginBottom: 10,
+  marginTop: 4,
+},
+checkbox: {
+  width: 22,
+  height: 22,
+  borderWidth: 2,
+  borderColor: "#D32F2F",
+  borderRadius: 4,
+  marginRight: 8,
+  justifyContent: "center",
+  alignItems: "center",
+},
+checkboxChecked: {
+  backgroundColor: "#D32F2F",
+},
+checkboxTick: {
+  color: "#fff",
+  fontSize: 14,
+  fontWeight: "bold",
+},
+checkboxLabel: {
+  fontSize: 15,
+  color: "#000",
+  fontWeight: "500",
+},
+
 });

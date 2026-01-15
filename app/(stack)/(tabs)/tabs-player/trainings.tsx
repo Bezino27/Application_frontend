@@ -1,4 +1,3 @@
-// TrainingsScreen.tsx
 import React, { useEffect, useState, useContext, useCallback, useRef } from 'react';
 import {
     View,
@@ -42,36 +41,35 @@ export default function TrainingsScreen() {
     const [trainings, setTrainings] = useState<Training[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // 🔧 chýbajúce stavy pre filtre a modaly
     const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
     const [selectedSeason, setSelectedSeason] = useState<string>(getSeasonLabel(new Date()));
     const [seasonPickerVisible, setSeasonPickerVisible] = useState(false);
     const [monthPickerVisible, setMonthPickerVisible] = useState(false);
 
-    // guards proti pretekaniu requestov a zápisom po unmount-e
     const inflightRef = useRef(false);
     const abortedRef = useRef(false);
 
     const fetchTrainings = useCallback(async () => {
-        if (inflightRef.current) return; // už beží
+        if (inflightRef.current) return;
         inflightRef.current = true;
+
         try {
-            const res = await fetchWithAuth(`${BASE_URL}/trainings/history/`);
-            if (!res.ok) return; // 401/404/5xx – neparsuj
+            let url = `${BASE_URL}/trainings_optimalization/history/?season=${selectedSeason}`;
+            if (selectedMonth !== -1) url += `&month=${selectedMonth}`;
+
+            const res = await fetchWithAuth(url);
+            if (!res.ok) return;
             const data: Training[] = await res.json();
             if (abortedRef.current) return;
 
-            const sorted = [...data].sort(
-                (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-            );
-            setTrainings(sorted);
+            setTrainings(data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
         } catch (err) {
             console.error('Chyba pri načítaní tréningov:', err);
         } finally {
             inflightRef.current = false;
             if (!abortedRef.current) setLoading(false);
         }
-    }, [fetchWithAuth]);
+    }, [fetchWithAuth, selectedSeason, selectedMonth]);
 
     useEffect(() => {
         if (!isLoggedIn || !accessToken) {
@@ -85,25 +83,18 @@ export default function TrainingsScreen() {
         };
     }, [isLoggedIn, accessToken, fetchTrainings]);
 
+    // dostupné sezóny z dát (len pre výber)
     const allSeasons = Array.from(new Set(trainings.map(t => getSeasonLabel(new Date(t.date))))).sort().reverse();
     const allCategories = Array.from(new Set(trainings.map(t => t.category_name)));
 
-    // --- filter podľa vybraného mesiaca a sezóny (pre opakované použitie) ---
-    const passesFilter = (t: Training) => {
-        const d = new Date(t.date);
-        const monthOK = selectedMonth === -1 || d.getMonth() === selectedMonth;
-        const seasonOK = getSeasonLabel(d) === selectedSeason;
-        return monthOK && seasonOK;
-    };
-
-    // --- Zoskupenie podľa kategórie (rešpektuje filter) ---
+    // --- Zoskupenie tréningov podľa kategórie ---
     const trainingsByCategory: Record<string, Training[]> = {};
     for (const category of allCategories) {
-        const filtered = trainings.filter(t => t.category_name === category && passesFilter(t));
+        const filtered = trainings.filter(t => t.category_name === category);
         if (filtered.length > 0) trainingsByCategory[category] = filtered;
     }
 
-    // --- Prehľad za kategórie + Celkový percent (správny priemer percent) ---
+    // --- Výpočet percentuálnej účasti ---
     const statsByCategory = Object.entries(trainingsByCategory).map(([category, items]) => {
         const total = items.length;
         const present = items.filter(t => t.user_status === 'present').length;
@@ -115,37 +106,28 @@ export default function TrainingsScreen() {
     const sumPercents = statsByCategory.reduce((acc, s) => acc + s.percent, 0);
     const overallCategoriesPercent = categoriesCount > 0 ? Math.round(sumPercents / categoriesCount) : 0;
 
-    // --- Farba progressu (plynulý prechod) ---
+    // --- Farebný prechod progress baru ---
     const getInterpolatedColor = (percent: number): string => {
         const clamp = (n: number) => Math.max(0, Math.min(n, 100));
         const p = clamp(percent);
+        const interpolateColor = (start: number[], end: number[], ratio: number): string => {
+            const r = Math.round(start[0] + (end[0] - start[0]) * ratio);
+            const g = Math.round(start[1] + (end[1] - start[1]) * ratio);
+            const b = Math.round(start[2] + (end[2] - start[2]) * ratio);
+            return `rgb(${r}, ${g}, ${b})`;
+        };
 
-        if (p <= 25) {
-            const ratio = p / 25;
-            return interpolateColor([139, 0, 0], [255, 140, 0], ratio);          // darkred -> orange
-        } else if (p <= 50) {
-            const ratio = (p - 25) / 25;
-            return interpolateColor([255, 140, 0], [255, 215, 0], ratio);        // orange -> yellow
-        } else if (p <= 75) {
-            const ratio = (p - 50) / 25;
-            return interpolateColor([255, 215, 0], [173, 255, 47], ratio);       // yellow -> greenyellow
-        } else {
-            const ratio = (p - 75) / 25;
-            return interpolateColor([173, 255, 47], [34, 139, 34], ratio);       // greenyellow -> forestgreen
-        }
-    };
-
-    const interpolateColor = (start: number[], end: number[], ratio: number): string => {
-        const r = Math.round(start[0] + (end[0] - start[0]) * ratio);
-        const g = Math.round(start[1] + (end[1] - start[1]) * ratio);
-        const b = Math.round(start[2] + (end[2] - start[2]) * ratio);
-        return `rgb(${r}, ${g}, ${b})`;
+        if (p <= 25) return interpolateColor([139, 0, 0], [255, 140, 0], p / 25);
+        if (p <= 50) return interpolateColor([255, 140, 0], [255, 215, 0], (p - 25) / 25);
+        if (p <= 75) return interpolateColor([255, 215, 0], [173, 255, 47], (p - 50) / 25);
+        return interpolateColor([173, 255, 47], [34, 139, 34], (p - 75) / 25);
     };
 
     if (loading) return <ActivityIndicator style={{ marginTop: 50 }} />;
 
     return (
         <View style={{ flex: 1, backgroundColor: '#f4f4f8' }}>
+            {/* Header s filtrami */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => setSeasonPickerVisible(true)} style={styles.filterItem}>
                     <Text style={styles.season}>{selectedSeason}</Text>
@@ -157,8 +139,8 @@ export default function TrainingsScreen() {
                 </TouchableOpacity>
             </View>
 
+            {/* Zoznam tréningov */}
             <ScrollView style={{ padding: 20 }}>
-                {/* ===== CELKOVÁ ÚČASŤ – len ak je viac kategórií ===== */}
                 {categoriesCount > 1 && (
                     <View style={{ marginBottom: 0 }}>
                         <View style={styles.progressBarContainer}>
@@ -168,14 +150,11 @@ export default function TrainingsScreen() {
                                     { width: `${overallCategoriesPercent}%`, backgroundColor: getInterpolatedColor(overallCategoriesPercent) },
                                 ]}
                             />
-                            <Text style={styles.progressText}>
-                                Celkovo ({overallCategoriesPercent}%)
-                            </Text>
+                            <Text style={styles.progressText}>Celkovo ({overallCategoriesPercent}%)</Text>
                         </View>
                     </View>
                 )}
 
-                {/* ===== KATEGÓRIE ===== */}
                 {Object.entries(trainingsByCategory).map(([category, items]) => {
                     const total = items.length;
                     const present = items.filter(t => t.user_status === 'present').length;
@@ -208,18 +187,14 @@ export default function TrainingsScreen() {
                                     minute: '2-digit',
                                     hour12: false,
                                 });
-                                const statusColor =
-                                    t.user_status === 'present'
-                                        ? '#4CAF50'
-                                        : t.user_status === 'absent'
-                                            ? '#D32F2F'
-                                            : '#aaa';
 
                                 return (
                                     <TouchableOpacity
                                         key={t.id}
                                         style={styles.trainingCard}
-                                        onPress={() => router.push({ pathname: '/training/[id]', params: { id: String(t.id) } })}
+                                        onPress={() =>
+                                            router.push({ pathname: '/training/[id]', params: { id: String(t.id) } })
+                                        }
                                     >
                                         <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#8C1919', marginBottom: 6 }}>
                                             {t.description || 'Tréning'}
@@ -241,10 +216,10 @@ export default function TrainingsScreen() {
                                                     {
                                                         backgroundColor:
                                                             t.user_status === 'present'
-                                                                ? '#4CAF50' // zelená
+                                                                ? '#4CAF50'
                                                                 : t.user_status === 'absent'
-                                                                    ? '#D32F2F' // červená
-                                                                    : '#333',  // čierna
+                                                                    ? '#D32F2F'
+                                                                    : '#333',
                                                     },
                                                 ]}
                                             />
@@ -264,35 +239,38 @@ export default function TrainingsScreen() {
                 })}
             </ScrollView>
 
-            {/* SEASON PICKER MODAL */}
+            {/* Sezóna výber */}
             <Modal visible={seasonPickerVisible} animationType="fade" transparent>
                 <Pressable style={styles.modalOverlay} onPress={() => setSeasonPickerVisible(false)}>
-                    <Pressable style={styles.pickerModal} onPress={() => {}}>
+                    <Pressable style={styles.pickerModal}>
                         {allSeasons.map(season => (
                             <TouchableOpacity
                                 key={season}
                                 onPress={() => {
                                     setSelectedSeason(season);
                                     setSeasonPickerVisible(false);
+                                    setLoading(true);
+                                    void fetchTrainings();
                                 }}
                             >
                                 <Text style={[styles.drawerText, season === selectedSeason && { fontWeight: 'bold' }]}>{season}</Text>
                             </TouchableOpacity>
                         ))}
-                        <Pressable onPress={() => setSeasonPickerVisible(false)} style={{ marginTop: 20 }} />
                     </Pressable>
                 </Pressable>
             </Modal>
 
-            {/* MONTH PICKER MODAL */}
+            {/* Mesiac výber */}
             <Modal visible={monthPickerVisible} animationType="fade" transparent>
                 <Pressable style={styles.modalOverlay} onPress={() => setMonthPickerVisible(false)}>
-                    <Pressable style={styles.SeasonPickerModal} onPress={() => {}}>
+                    <Pressable style={styles.SeasonPickerModal}>
                         <ScrollView style={{ maxHeight: 800 }}>
                             <TouchableOpacity
                                 onPress={() => {
                                     setSelectedMonth(-1);
                                     setMonthPickerVisible(false);
+                                    setLoading(true);
+                                    void fetchTrainings();
                                 }}
                             >
                                 <Text style={[styles.drawerText, selectedMonth === -1 && { fontWeight: 'bold' }]}>Všetky</Text>
@@ -303,6 +281,8 @@ export default function TrainingsScreen() {
                                     onPress={() => {
                                         setSelectedMonth(index);
                                         setMonthPickerVisible(false);
+                                        setLoading(true);
+                                        void fetchTrainings();
                                     }}
                                 >
                                     <Text style={[styles.drawerText, selectedMonth === index && { fontWeight: 'bold' }]}>{monthNames[idx]}</Text>
@@ -334,11 +314,7 @@ const styles = StyleSheet.create({
         top: 0,
         bottom: 0,
     },
-    progressText: {
-        textAlign: 'center',
-        color: '#111',
-        fontWeight: '600',
-    },
+    progressText: { textAlign: 'center', color: '#111', fontWeight: '600' },
     trainingCard: {
         backgroundColor: '#fff',
         borderRadius: 12,
@@ -350,9 +326,6 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 3,
     },
-    trainingTitle: { fontSize: 18, fontWeight: '600', marginBottom: 6, color: '#000' },
-    trainingDetail: { fontSize: 15, color: '#555', marginBottom: 4 },
-    status: { fontWeight: 'bold', marginTop: 0, fontSize: 12 },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-around',
@@ -362,28 +335,8 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderColor: '#ccc',
     },
-    season: {
-        fontSize: 15,
-        color: '#D32F2F',
-        fontWeight: 'bold',
-    },
-    filterItem: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 6,
-        backgroundColor: '#f3f3f3',
-    },
-    statsBox: {
-        marginBottom: 10,
-        backgroundColor: '#eee',
-        padding: 10,
-        borderRadius: 8,
-    },
-    statsText: {
-        fontSize: 15,
-        color: '#333',
-        fontStyle: 'italic',
-    },
+    season: { fontSize: 15, color: '#D32F2F', fontWeight: 'bold' },
+    filterItem: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, backgroundColor: '#f3f3f3' },
     modalOverlay: {
         flex: 1,
         justifyContent: 'center',
@@ -395,7 +348,6 @@ const styles = StyleSheet.create({
         padding: 20,
         borderRadius: 10,
         width: 300,
-        maxHeight: 600,
         alignItems: 'center',
     },
     SeasonPickerModal: {
@@ -403,30 +355,10 @@ const styles = StyleSheet.create({
         padding: 20,
         borderRadius: 10,
         width: 220,
-        maxHeight: 600,
         alignItems: 'center',
     },
-    drawerText: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        color: '#000',
-        padding: 8,
-        alignSelf: 'center',
-    },
-    statusRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginTop: 5,
-    },
-    dot: {
-        width: 15,
-        height: 15,
-        borderRadius: 15,
-    },
-    statusText: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: '#000',
-    },
+    drawerText: { fontSize: 22, fontWeight: 'bold', color: '#000', padding: 8, alignSelf: 'center' },
+    statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 5 },
+    dot: { width: 15, height: 15, borderRadius: 15 },
+    statusText: { fontSize: 14, fontWeight: 'bold', color: '#000' },
 });

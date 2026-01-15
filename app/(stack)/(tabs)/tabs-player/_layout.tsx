@@ -2,22 +2,24 @@
 import React, { useCallback, useRef, useState, useContext, useEffect } from 'react';
 import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { TouchableOpacity, Image, View, Text, StyleSheet } from 'react-native';
+import { TouchableOpacity, Image, View, Text, StyleSheet, DeviceEventEmitter } from 'react-native';
 import { useFetchWithAuth } from '@/hooks/fetchWithAuth';
 import { useFocusEffect } from '@react-navigation/native';
 import { BASE_URL } from '@/hooks/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthContext } from '@/context/AuthContext';
-import ProfileCompletionBanner from "@/components/ProfileCompletionBanner";
+
+
 export default function PlayerTabsLayout() {
     const router = useRouter();
     const { fetchWithAuth } = useFetchWithAuth();
     const { isLoggedIn, accessToken } = useContext(AuthContext);
     const [unreadCount, setUnreadCount] = useState(0);
     const insets = useSafeAreaInsets();
-
+    const [unreadAnnouncements, setUnreadAnnouncements] = useState(0);
     const inflightRef = useRef(false);
     const abortedRef = useRef(false);
+    const inflightAnnouncementsRef = useRef(false);
 
     const fetchUnread = useCallback(async () => {
         if (isLoggedIn !== true || !accessToken || inflightRef.current) return;
@@ -35,6 +37,22 @@ export default function PlayerTabsLayout() {
             inflightRef.current = false;
         }
     }, [isLoggedIn, accessToken, fetchWithAuth]);
+    const fetchUnreadAnnouncements = useCallback(async () => {
+    if (isLoggedIn !== true || !accessToken || inflightAnnouncementsRef.current) return;
+    inflightAnnouncementsRef.current = true;
+        try {
+            const res = await fetchWithAuth(`${BASE_URL}/announcements/`);
+            if (!res.ok) return;
+            const data = await res.json();
+
+            const unreadCount = data.filter((a: any) => !a.read_at).length;
+            setUnreadAnnouncements(unreadCount);
+        } catch (e) {
+            console.error("❌ Chyba pri načítaní oznamov:", e);
+        } finally {
+            inflightAnnouncementsRef.current = false;
+        }
+    }, [isLoggedIn, accessToken, fetchWithAuth]);
 
     useFocusEffect(
         useCallback(() => {
@@ -45,6 +63,19 @@ export default function PlayerTabsLayout() {
             };
         }, [fetchUnread])
     );
+    useFocusEffect(
+        useCallback(() => {
+            void fetchUnreadAnnouncements();
+            return () => {};
+        }, [fetchUnreadAnnouncements])
+        );
+
+    useEffect(() => {
+        const sub = DeviceEventEmitter.addListener("refreshAnnouncements", () => {
+            void fetchUnreadAnnouncements(); // ✅ okamžitý refresh badge
+        });
+        return () => sub.remove();
+        }, [fetchUnreadAnnouncements]);
 
     useEffect(() => {
         if (!isLoggedIn || !accessToken) return;
@@ -62,6 +93,8 @@ export default function PlayerTabsLayout() {
                     paddingTop: insets.top,
                     backgroundColor: "#fff",
                 },
+                tabBarActiveTintColor: '#D32F2F',     // 🔥 farba aktívnej ikony (napr. červená)
+                tabBarInactiveTintColor: '#888888ff',   
                 headerTitleAlign: "center",
                 headerTitleContainerStyle: {
                     justifyContent: "center",
@@ -99,22 +132,27 @@ export default function PlayerTabsLayout() {
 
 
             <Tabs.Screen
-                name="announcements"
-                options={{
-                    title: "Nástenka",
-                    headerTitle: () => (
-                        <Image
-                            source={require('@/assets/images/nastenka_head.png')}
-                            style={{ width: 140, height: 40, resizeMode: 'contain' }}
-                        />
-                    ),
-                    tabBarIcon: ({ color, size }) => (
-                        <Image
-                            source={require('@/assets/images/nastenka.png')}
-                            style={{ width: size, height: size, tintColor: color }}
-                        />
-                    ),
-                }}
+            name="announcements"
+            options={{
+                title: "Nástenka",
+                headerTitle: () => (
+                <Image
+                    source={require('@/assets/images/nastenka_head.png')}
+                    style={{ width: 140, height: 40, resizeMode: 'contain' }}
+                />
+                ),
+                tabBarIcon: ({ color, size }) => (
+                <View>
+                    <Image
+                    source={require('@/assets/images/nastenka.png')}
+                    style={{ width: size, height: size, tintColor: color }}
+                    />
+                    {unreadAnnouncements > 0 && (
+                    <View style={styles.unreadDotSmall} />
+                    )}
+                </View>
+                ),
+            }}
             />
 
             <Tabs.Screen
@@ -215,4 +253,14 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         textAlign: 'center',
     },
+    unreadDotSmall: {
+        position: "absolute",
+        top: -2,
+        right: -5,
+        width: 12,
+        height: 12,
+        borderRadius: 5,
+        backgroundColor: "#D32F2F",
+    },
+
 });

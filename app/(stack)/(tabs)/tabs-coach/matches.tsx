@@ -15,7 +15,7 @@ import {
 import { useFetchWithAuth } from "@/hooks/fetchWithAuth";
 import { AuthContext } from "@/context/AuthContext";
 import { BASE_URL } from "@/hooks/api";
-import { router } from "expo-router"; // ← pridaj hore do importov
+import { router } from "expo-router";
 
 type Match = {
     id: number;
@@ -27,74 +27,55 @@ type Match = {
     category: number;
     category_name: string;
     user_status: "confirmed" | "declined" | "unknown";
+    is_home: boolean; 
 };
 
 export default function MatchesScreen() {
     const { fetchWithAuth } = useFetchWithAuth();
     const { userRoles } = useContext(AuthContext);
+
     const [matches, setMatches] = useState<Match[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [filter, setFilter] = useState<"VŠETKY" | "ODOHRANÉ" | "NEODOHRANÉ">("VŠETKY");
+    const [filter, setFilter] = useState<"NEODOHRANÉ" | "ODOHRANÉ">("NEODOHRANÉ");
 
-    const fetchMatches = async () => {
+    const getFilterParam = (f: "NEODOHRANÉ" | "ODOHRANÉ") =>
+        f === "ODOHRANÉ" ? "past" : "upcoming";
+
+    const fetchMatches = async (filterParam: "past" | "upcoming", isRefresh = false) => {
         try {
-            const response = await fetchWithAuth(`${BASE_URL}/matches-coach/`);
+            if (!isRefresh) setLoading(true);
+            const response = await fetchWithAuth(`${BASE_URL}/matches-coach/?filter=${filterParam}`);
             if (response.ok) {
                 const data = await response.json();
                 setMatches(data);
             } else {
-                const error = await response.text();
-                console.error("Chyba pri načítaní zápasov:", error);
+                console.error("❌ Chyba pri načítaní zápasov:", await response.text());
             }
-        } catch (e) {
-            console.error("❌ Chyba pri fetchnutí zápasov:", e);
+        } catch (err) {
+            console.error("❌ Fetch error:", err);
         } finally {
-            setLoading(false);
+            if (!isRefresh) setLoading(false);
             setRefreshing(false);
         }
     };
 
+    // 🔹 Načítaj po prvom otvorení len neodohrané
     useEffect(() => {
-        fetchMatches();
+        fetchMatches("upcoming");
     }, []);
+
+    // 🔹 Keď sa zmení filter, načítaj znova
+    useEffect(() => {
+        fetchMatches(getFilterParam(filter));
+    }, [filter]);
 
     const onRefresh = async () => {
         setRefreshing(true);
-        await fetchMatches();
+        await fetchMatches(getFilterParam(filter), true);
     };
 
-    const updateStatus = async (matchId: number, status: "confirmed" | "declined") => {
-        const match = matches.find((m) => m.id === matchId);
-        if (!match) return;
-
-        const diffDays = (new Date(match.date).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-        if (diffDays < 2) {
-            Alert.alert("Zmenu stavu je možné vykonať najneskôr 2 dni pred zápasom.");
-            return;
-        }
-
-        try {
-            const res = await fetchWithAuth(`${BASE_URL}/match-participations/`, {
-                method: "POST",
-                body: JSON.stringify({ match: matchId, confirmed: status === "confirmed" }),
-            });
-
-            if (res.ok) fetchMatches();
-            else Alert.alert("Nepodarilo sa uložiť stav.");
-        } catch (e) {
-            Alert.alert("Chyba pri ukladaní účasti.");
-        }
-    };
-
-    const filteredMatches = matches.filter((m) => {
-        const isPast = new Date(m.date) < new Date();
-        if (filter === "VŠETKY") return true;
-        if (filter === "ODOHRANÉ") return isPast;
-        if (filter === "NEODOHRANÉ") return !isPast;
-    });
-
-    const grouped = filteredMatches.reduce((acc, match) => {
+    const grouped = matches.reduce((acc, match) => {
         if (!acc[match.category_name]) acc[match.category_name] = [];
         acc[match.category_name].push(match);
         return acc;
@@ -107,8 +88,9 @@ export default function MatchesScreen() {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
             style={{ padding: 20 }}
         >
+            {/* 🔹 Filter */}
             <View style={styles.filterRow}>
-                {["VŠETKY", "ODOHRANÉ", "NEODOHRANÉ"].map((f) => (
+                {["NEODOHRANÉ", "ODOHRANÉ"].map((f) => (
                     <TouchableOpacity
                         key={f}
                         onPress={() => setFilter(f as any)}
@@ -121,26 +103,32 @@ export default function MatchesScreen() {
                 ))}
             </View>
 
+            {/* 🔹 Zápasy podľa kategórií */}
             {Object.entries(grouped).map(([category, items]) => (
                 <View key={category} style={{ marginBottom: 30 }}>
                     <Text style={{ fontWeight: "bold", fontSize: 22, marginBottom: 15 }}>{category}</Text>
 
                     {items.map((m) => {
                         const matchDate = new Date(m.date);
-                        const editable = (matchDate.getTime() - Date.now()) > 2 * 24 * 60 * 60 * 1000;
 
                         return (
                             <TouchableOpacity key={m.id} onPress={() => router.push(`/match/${m.id}`)}>
-                                <ImageBackground
-                                    source={require("@/assets/images/zapas_pozadie.png")}
-                                    imageStyle={{ borderRadius: 10 }}
-                                    style={styles.card}
-                                >
-                                    <Text style={styles.title}>
-                                        {m.opponent}
-                                    </Text>
+                            <ImageBackground
+                                source={
+                                m.is_home
+                                    ? require("@/assets/images/zapas_doma.png")  // 🏠 domáci zápas
+                                    : require("@/assets/images/zapas_vonku.png") // 🚌 vonkajší zápas
+                                }
+                                imageStyle={{ borderRadius: 10 }}
+                                style={styles.card}
+                            >
+                                    <Text style={styles.title}>{m.opponent}</Text>
                                     <Text style={styles.date}>
-                                        {matchDate.toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" })} •{" "}
+                                        {matchDate.toLocaleTimeString("sk-SK", {
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                        })}{" "}
+                                        •{" "}
                                         {matchDate.toLocaleDateString("sk-SK", {
                                             weekday: "long",
                                             year: "numeric",
@@ -149,8 +137,6 @@ export default function MatchesScreen() {
                                         })}
                                     </Text>
                                     <Text style={styles.location}>📍 {m.location}</Text>
-
-
                                 </ImageBackground>
                             </TouchableOpacity>
                         );
@@ -176,7 +162,6 @@ const styles = StyleSheet.create({
         borderColor: "#ccc",
         borderRadius: 20,
         marginHorizontal: 5,
-
     },
     filterButtonActive: {
         backgroundColor: "#D32F2F",
@@ -217,15 +202,5 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: "#333",
         marginBottom: 6,
-    },
-    status: {
-        fontStyle: "italic",
-        color: "#666",
-    },
-    note: {
-        color: "gray",
-        fontSize: 12,
-        marginTop: 10,
-        fontStyle: "italic",
     },
 });

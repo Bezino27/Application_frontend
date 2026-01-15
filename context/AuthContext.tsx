@@ -173,9 +173,23 @@ export const AuthProvider = ({ children }: Props) => {
     };
 
     loadData();
+    
   }, []);
 
-
+  useEffect(() => {
+    const tryRefreshOnStartup = async () => {
+      try {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) console.log("🔄 Token obnovený pri štarte appky");
+      } catch (e) {
+        console.warn("⚠️ Nepodarilo sa obnoviť token pri štarte:", e);
+      }
+    };
+    // spustí sa po prvotnom načítaní údajov
+    if (!isLoading) {
+      tryRefreshOnStartup();
+    }
+  }, [isLoading]);
 
   const registerForPushNotificationsAsync = async (accessToken: string) => {
     try {
@@ -312,32 +326,55 @@ export const AuthProvider = ({ children }: Props) => {
     }
   };
 
-  const refreshAccessToken = async (): Promise<string | null> => {
+const refreshAccessToken = async (): Promise<string | null> => {
+  try {
+    const refresh = await AsyncStorage.getItem("refresh");
+    if (!refresh) {
+      console.warn("⚠️ Žiadny refresh token, nemôžem obnoviť.");
+      return null;
+    }
+
+    const response = await fetch(`${BASE_URL}/token/refresh/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh }),
+    });
+
+    // 🚫 Refresh token expiroval alebo je neplatný → jediné miesto, kde sa odhlásime
+    if (response.status === 401) {
+      console.warn("🚫 Refresh token expiroval alebo je neplatný – odhlasujem používateľa.");
+      await logout();
+      return null;
+    }
+
+    // ⚠️ Ak server hodí 500, 502, 403 alebo inú chybu – neodhlasuj
+    if (response.status >= 500 || response.status === 403 || response.status === 404) {
+      console.warn("⚠️ Server chyba pri refreshe (neodhlasujem):", response.status);
+      return accessToken; // použijeme aktuálny token, nech fetchWithAuth skúsi znova neskôr
+    }
+
+    // Ak odpoveď nie je OK (napr. 400), neodhlasuj
+    if (!response.ok) {
+      console.warn("⚠️ Iný problém pri refreshe:", response.status);
+      return accessToken;
+    }
+
+    // ✅ Refresh token je platný
+    const data = await response.json();
+    const newAccessToken = data.access;
+
+    if (!newAccessToken) {
+      console.warn("⚠️ Chýba nový access token v odpovedi, nechávam starý.");
+      return accessToken;
+    }
+
+    await AsyncStorage.setItem("access", newAccessToken);
+    setAccessToken(newAccessToken);
+
+    // 🔄 Načítaj údaje používateľa po úspešnom refreshe
     try {
-      const refresh = await AsyncStorage.getItem('refresh');
-      if (!refresh) return null;
-
-      const response = await fetch(`${BASE_URL}/token/refresh/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Token refresh zlyhal');
-      }
-
-      const data = await response.json();
-      const newAccessToken = data.access;
-
-      await AsyncStorage.setItem('access', newAccessToken);
-      setAccessToken(newAccessToken);
-
-      // 🔥 TU: načítaj user info znova
       const meRes = await fetch(`${BASE_URL}/me/`, {
-        headers: {
-          Authorization: `Bearer ${newAccessToken}`,
-        },
+        headers: { Authorization: `Bearer ${newAccessToken}` },
       });
 
       if (meRes.ok) {
@@ -356,22 +393,28 @@ export const AuthProvider = ({ children }: Props) => {
           side: data.side,
           position: data.position,
           preferred_role: data.preferred_role,
-          club: data.club ?? null, 
+          club: data.club ?? null,
         };
 
         await updateUserDetails(user);
         await updateUserRoles(data.roles ?? []);
         await updateUserCategories(data.assigned_categories ?? []);
         await updateUserClub(data.club ?? null);
+      } else {
+        console.warn("⚠️ Načítanie používateľa po refreshe zlyhalo:", meRes.status);
       }
-
-      return newAccessToken;
-    } catch (error) {
-      console.error('Chyba pri obnove access tokenu:', error);
-      await logout();
-      return null;
+    } catch (e) {
+      console.warn("⚠️ Chyba pri načítaní používateľa po refreshe:", e);
     }
-  };
+
+    return newAccessToken;
+  } catch (error) {
+    console.warn("⚠️ Chyba pri pokuse o refresh tokenu:", error);
+    // ⚠️ NEODHLASUJ – môže byť offline alebo dočasný problém
+    return accessToken;
+  }
+};
+
 
 
   const loadUserDetails = async (token: string) => {

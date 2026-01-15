@@ -1,6 +1,13 @@
 import React, { useContext, useState } from "react";
 import {
-    View, Text, StyleSheet, TouchableOpacity, Alert, LayoutAnimation, Platform, UIManager
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    Alert,
+    LayoutAnimation,
+    Platform,
+    UIManager,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -9,7 +16,7 @@ import { useFetchWithAuth } from "@/hooks/fetchWithAuth";
 import { BASE_URL } from "@/hooks/api";
 
 // Aktivuj animácie pre Android
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
@@ -20,16 +27,13 @@ export default function SettingsScreen() {
 
     const [preferred, setPreferred] = useState(userDetails?.preferred_role || "");
     const [showRoleSection, setShowRoleSection] = useState(false);
+    const [showDeleteSection, setShowDeleteSection] = useState(false);
 
     const handleLogout = () => {
-        Alert.alert(
-            "Odhlásenie",
-            "Naozaj sa chceš odhlásiť?",
-            [
-                { text: "Zrušiť", style: "cancel" },
-                { text: "Odhlásiť sa", style: "destructive", onPress: logout },
-            ]
-        );
+        Alert.alert("Odhlásenie", "Naozaj sa chceš odhlásiť?", [
+            { text: "Zrušiť", style: "cancel" },
+            { text: "Odhlásiť sa", style: "destructive", onPress: logout },
+        ]);
     };
 
     const handleSavePreferredRole = async () => {
@@ -57,14 +61,52 @@ export default function SettingsScreen() {
         setShowRoleSection(!showRoleSection);
     };
 
+    const toggleDeleteSection = () => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setShowDeleteSection(!showDeleteSection);
+    };
+
+    const handleDeleteAccount = () => {
+        Alert.alert(
+            "⚠️ Naozaj chcete odstrániť účet?",
+            "Tento krok je nevratný. Všetky tvoje údaje, štatistiky a prístupy budú natrvalo zmazané.",
+            [
+                { text: "Zrušiť", style: "cancel" },
+                {
+                    text: "Vymazať účet",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            const res = await fetchWithAuth(`${BASE_URL}/delete-account/`, { 
+                                method: "DELETE" }
+                            );
+
+                            if (!res.ok) throw new Error("Chyba pri mazaní účtu");
+
+                            Alert.alert("✅ Účet bol vymazaný", "Všetky údaje boli natrvalo odstránené.");
+                            logout();
+                        } catch {
+                            Alert.alert("❌ Chyba", "Nepodarilo sa vymazať účet. Skús to znova.");
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
     return (
         <SafeAreaView style={styles.container}>
-
-            <TouchableOpacity style={styles.settingItem} onPress={() => router.push("/profile-edit")}>
+            <TouchableOpacity
+                style={styles.settingItem}
+                onPress={() => router.push("/profile-edit")}
+            >
                 <Text style={styles.settingText}>Upraviť profil</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.settingItem} onPress={() => router.push("/change-password")}>
+            <TouchableOpacity
+                style={styles.settingItem}
+                onPress={() => router.push("/change-password")}
+            >
                 <Text style={styles.settingText}>Zmeniť heslo</Text>
             </TouchableOpacity>
 
@@ -74,33 +116,64 @@ export default function SettingsScreen() {
 
             {showRoleSection && (
                 <View style={styles.roleSection}>
-                    {["player", "coach", "admin"].map(role => (
+                    {["player", "coach", "admin"].map((role) => (
                         <TouchableOpacity
                             key={role}
                             onPress={() => setPreferred(role)}
                             style={[
                                 styles.roleButton,
-                                preferred === role && styles.roleButtonSelected
+                                preferred === role && styles.roleButtonSelected,
                             ]}
                         >
-                            <Text style={[
-                                styles.roleButtonText,
-                                preferred === role && styles.roleButtonTextSelected
-                            ]}>
-                                {role === "player" ? "Hráč" :
-                                    role === "coach" ? "Tréner" :
-                                        role === "admin" ? "Admin" : role}
+                            <Text
+                                style={[
+                                    styles.roleButtonText,
+                                    preferred === role && styles.roleButtonTextSelected,
+                                ]}
+                            >
+                                {role === "player"
+                                    ? "Hráč"
+                                    : role === "coach"
+                                    ? "Tréner"
+                                    : "Admin"}
                             </Text>
                         </TouchableOpacity>
                     ))}
 
-                    <TouchableOpacity style={styles.savePrefButton} onPress={handleSavePreferredRole}>
+                    <TouchableOpacity
+                        style={styles.savePrefButton}
+                        onPress={handleSavePreferredRole}
+                    >
                         <Text style={styles.savePrefText}>Uložiť preferovanú rolu</Text>
                     </TouchableOpacity>
                 </View>
             )}
 
-            <TouchableOpacity style={[styles.settingItem, styles.logout]} onPress={handleLogout}>
+            {/* ⚠️ Vymazať účet sekcia */}
+            <TouchableOpacity style={styles.settingItem} onPress={toggleDeleteSection}>
+                <Text style={[styles.settingText, { color: "#b00020" }]}>Vymazať účet</Text>
+            </TouchableOpacity>
+
+            {showDeleteSection && (
+                <View style={styles.deleteSection}>
+                    <Text style={styles.warningText}>
+                        Týmto si natrvalo odstránite svoj účet a všetky údaje ako aj štatistiky
+                        budú nenávratne vymazané.
+                    </Text>
+
+                    <TouchableOpacity
+                        style={styles.deleteAccountButton}
+                        onPress={handleDeleteAccount}
+                    >
+                        <Text style={styles.deleteAccountText}>Odstrániť účet</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+
+            <TouchableOpacity
+                style={[styles.settingItem, styles.logout]}
+                onPress={handleLogout}
+            >
                 <Text style={[styles.settingText, { color: "#b00020" }]}>Odhlásiť sa</Text>
             </TouchableOpacity>
         </SafeAreaView>
@@ -112,12 +185,6 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: "#f4f4f8",
         padding: 20,
-    },
-    title: {
-        fontSize: 26,
-        fontWeight: "bold",
-        marginBottom: 30,
-        color: "#111",
     },
     settingItem: {
         backgroundColor: "#fff",
@@ -176,6 +243,31 @@ const styles = StyleSheet.create({
     savePrefText: {
         color: "#fff",
         fontWeight: "600",
+        fontSize: 16,
+    },
+    deleteSection: {
+        backgroundColor: "#fff",
+        borderColor: "#ffcccc",
+        borderWidth: 1,
+        borderRadius: 10,
+        padding: 16,
+        marginBottom: 15,
+    },
+    warningText: {
+        color: "#b00020",
+        fontSize: 14,
+        fontStyle: "italic",
+        marginBottom: 10,
+    },
+    deleteAccountButton: {
+        backgroundColor: "#b00020",
+        padding: 12,
+        borderRadius: 8,
+        alignItems: "center",
+    },
+    deleteAccountText: {
+        color: "#fff",
+        fontWeight: "bold",
         fontSize: 16,
     },
 });

@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   ScrollView,
+  DeviceEventEmitter
 } from "react-native";
 import { useFetchWithAuth } from "@/hooks/fetchWithAuth";
 import { BASE_URL } from "@/hooks/api";
@@ -30,7 +31,7 @@ export default function AnnouncementsScreen() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Announcement | null>(null);
 
-  const fetchAnnouncements = async () => {
+  const fetchAnnouncements = useCallback(async () => {
     try {
       const res = await fetchWithAuth(`${BASE_URL}/announcements/`);
       if (!res.ok) throw new Error("Nepodarilo sa načítať oznamy");
@@ -41,35 +42,35 @@ export default function AnnouncementsScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchWithAuth]);
 
   const markRead = async (id: number) => {
     try {
       await fetchWithAuth(`${BASE_URL}/announcements/${id}/read/`, {
         method: "POST",
       });
-      // hneď update local state
       setAnnouncements((prev) =>
         prev.map((a) =>
           a.id === id ? { ...a, read_at: new Date().toISOString() } : a
         )
       );
+      DeviceEventEmitter.emit("refreshAnnouncements"); // ✅ oznám layoutu
     } catch (err) {
       console.error("❌ Chyba pri označení oznamu ako prečítaného:", err);
     }
   };
 
-  // refresh pri prvom mountnutí
-  useEffect(() => {
-    fetchAnnouncements();
-  }, []);
-
-  // refresh pri návrate na screen
-  useFocusEffect(
-    useCallback(() => {
+    // refresh pri prvom mountnutí
+    useEffect(() => {
       fetchAnnouncements();
-    }, [])
-  );
+    }, [fetchAnnouncements]);
+
+    // refresh pri návrate na screen
+    useFocusEffect(
+      useCallback(() => {
+        fetchAnnouncements();
+      }, [fetchAnnouncements])
+    );
 
 const renderItem = ({ item }: { item: Announcement }) => {
   const isRead = !!item.read_at;

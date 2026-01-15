@@ -1,5 +1,4 @@
-// TrainingsScreen.tsx
-import React, { useEffect, useState, useContext, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import {
     View,
     Text,
@@ -14,14 +13,25 @@ import { useFetchWithAuth } from '@/hooks/fetchWithAuth';
 import { BASE_URL } from '@/hooks/api';
 import { useRouter } from 'expo-router';
 import { AuthContext } from '@/context/AuthContext';
+import { useFocusEffect } from '@react-navigation/native';
 
-const monthNames = ['Jún', 'Júl', 'August', 'September', 'Október', 'November', 'December', 'Január', 'Február', 'Marec', 'Apríl', 'Máj'];
+const monthNames = [
+    'Jún', 'Júl', 'August', 'September', 'Október', 'November',
+    'December', 'Január', 'Február', 'Marec', 'Apríl', 'Máj'
+];
 const monthIndexes = [5, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4];
 
 const getSeasonLabel = (date: Date) => {
     const year = date.getFullYear();
-    const month = date.getMonth();
-    return month >= 5 ? `${year}/${year + 1}` : `${year - 1}/${year}`;
+    const month = date.getMonth(); // 0–11
+    // Sezóna sa začína v júni (5) a končí v máji (4)
+    if (month >= 5) {
+        // od júna po december ide o sezónu aktuálny/aktuálny+1
+        return `${year}/${year + 1}`;
+    } else {
+        // od januára po máj ide o sezónu predchádzajúci/aktuálny
+        return `${year - 1}/${year}`;
+    }
 };
 
 type Training = {
@@ -31,11 +41,10 @@ type Training = {
     location: string;
     category: number;
     category_name: string;
-    user_status: 'present' | 'absent' | 'unknown';
     attendance_summary: {
-        present: number,
-        goalies: number
-    }
+        present: number;
+        goalies: number;
+    };
 };
 
 export default function TrainingsScreen() {
@@ -45,8 +54,10 @@ export default function TrainingsScreen() {
 
     const [trainings, setTrainings] = useState<Training[]>([]);
     const [loading, setLoading] = useState(true);
-    const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+
     const [selectedSeason, setSelectedSeason] = useState<string>(getSeasonLabel(new Date()));
+    const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+
     const [seasonPickerVisible, setSeasonPickerVisible] = useState(false);
     const [monthPickerVisible, setMonthPickerVisible] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -54,114 +65,133 @@ export default function TrainingsScreen() {
     const inflightRef = useRef(false);
     const abortedRef = useRef(false);
 
-    const fetchTrainings = useCallback(async () => {
-        if (inflightRef.current) return;
-        inflightRef.current = true;
-        try {
-            const res = await fetchWithAuth(`${BASE_URL}/coach-trainings/`);
-            if (!res.ok) return;
-            const data: Training[] = await res.json();
-            if (abortedRef.current) return;
-            const sorted = [...data].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            setTrainings(sorted);
-        } catch (err) {
-            console.error('Chyba pri načítaní tréningov:', err);
-        } finally {
-            inflightRef.current = false;
-            if (!abortedRef.current) setLoading(false);
-        }
-    }, [fetchWithAuth]);
+const fetchTrainings = async (season?: string, month?: number) => {
+    if (inflightRef.current) return;
+    inflightRef.current = true;
+    setLoading(true);
 
+    try {
+        let url = `${BASE_URL}/coach-trainings-optimalization/?`;
+        if (season) url += `season=${season}&`;
+        if (month !== undefined) url += `month=${month}`;
+
+        console.log("📡 Fetching:", url);
+        const res = await fetchWithAuth(url);
+        const data: Training[] = res.ok ? await res.json() : [];
+        if (abortedRef.current) return;
+
+        setTrainings([...data].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    } catch (err) {
+        console.error("Chyba pri načítaní tréningov:", err);
+    } finally {
+        inflightRef.current = false;
+        if (!abortedRef.current) setLoading(false);
+    }
+};
+
+    
     useEffect(() => {
-        if (!isLoggedIn || !accessToken) {
-            setLoading(false);
-            return;
-        }
+        if (!isLoggedIn || !accessToken) return;
         abortedRef.current = false;
-        void fetchTrainings();
+        fetchTrainings(selectedSeason, selectedMonth);
         return () => {
             abortedRef.current = true;
         };
-    }, [isLoggedIn, accessToken, fetchTrainings]);
+    }, [isLoggedIn, accessToken]);
 
-    const allSeasons = Array.from(new Set(trainings.map(t => getSeasonLabel(new Date(t.date))))).sort().reverse();
+    useFocusEffect(
+    React.useCallback(() => {
+        abortedRef.current = false;
+        fetchTrainings(selectedSeason, selectedMonth);
+        return () => {
+            abortedRef.current = true;
+        };
+    }, [selectedSeason, selectedMonth])
+);
     const allCategories = Array.from(new Set(trainings.map(t => t.category_name)));
 
-    const passesFilter = (t: Training) => {
-        const d = new Date(t.date);
-        const monthOK = selectedMonth === -1 || d.getMonth() === selectedMonth;
-        const seasonOK = getSeasonLabel(d) === selectedSeason;
-        const categoryOK = selectedCategory === null || t.category_name === selectedCategory;
-        return monthOK && seasonOK && categoryOK;
-    };
+    const filteredTrainings =
+        selectedCategory === null
+            ? trainings
+            : trainings.filter(t => t.category_name === selectedCategory);
 
-    const filteredTrainings = trainings.filter(passesFilter);
+const renderTrainingCard = (t: Training) => {
+    const dateObj = new Date(t.date);
+    const formattedDate = dateObj.toLocaleDateString('sk-SK', {
+        weekday: 'short', day: 'numeric', month: 'numeric'
+    });
+    const formattedTime = dateObj.toLocaleTimeString('sk-SK', {
+        hour: '2-digit', minute: '2-digit', hour12: false,
+    });
 
-    const renderTrainingCard = (t: Training) => {
-        const dateObj = new Date(t.date);
-        const formattedDate = dateObj.toLocaleDateString('sk-SK', {
-            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-        });
-        const formattedTime = dateObj.toLocaleTimeString('sk-SK', {
-            hour: '2-digit', minute: '2-digit', hour12: false,
-        });
-
-        return (
-            <TouchableOpacity
-                key={t.id}
-                style={styles.trainingCard}
-                onPress={() => router.push({ pathname: '/training/[id]', params: { id: String(t.id) } })}
-            >
-                <View style={styles.titleRow}>
-                    <Text style={styles.trainingTitle}>
-                        {t.description || 'Tréning'}
-                    </Text>
-                    <Text style={styles.counts}>
-                        {t.attendance_summary.present} + {t.attendance_summary.goalies}
-                    </Text>
-                </View>
-
-                <Text style={styles.trainingDetail}>
-                    {formattedTime} • {formattedDate}
+    return (
+        <TouchableOpacity
+            key={t.id}
+            style={styles.trainingRow}
+            onPress={() => router.push({ pathname: '/training/[id]', params: { id: String(t.id) } })}
+        >
+            <View style={styles.rowLeft}>
+                <Text style={styles.trainingTitleSmall}>{t.description || 'Tréning'}</Text>
+                <Text style={styles.trainingSubInfo}>
+                    {formattedDate} • {formattedTime} • {t.location}
                 </Text>
+            </View>
+            <Text style={styles.countsSmall}>
+                {t.attendance_summary.present} + {t.attendance_summary.goalies}
+            </Text>
+        </TouchableOpacity>
+    );
+};
 
-                <View style={styles.trainingInfoRow}>
-                    <Text style={styles.trainingIcon}>📍</Text>
-                    <Text style={styles.trainingInfo}>{t.location}</Text>
-                </View>
-            </TouchableOpacity>
-        );
-    };
 
     if (loading) return <ActivityIndicator style={{ marginTop: 50 }} />;
 
     return (
         <View style={{ flex: 1, backgroundColor: '#f4f4f8' }}>
+            {/* 🔹 Výber sezóny a mesiaca */}
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => setSeasonPickerVisible(true)} style={styles.filterItem}><Text style={styles.season}>{selectedSeason}</Text></TouchableOpacity>
-                <TouchableOpacity onPress={() => setMonthPickerVisible(true)} style={styles.filterItem}><Text style={styles.season}>{selectedMonth === -1 ? 'Všetky' : monthNames[monthIndexes.indexOf(selectedMonth)]}</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => setSeasonPickerVisible(true)} style={styles.filterItem}>
+                    <Text style={styles.season}>{selectedSeason}</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setMonthPickerVisible(true)} style={styles.filterItem}>
+                    <Text style={styles.season}>
+                        {monthNames[monthIndexes.indexOf(selectedMonth)]}
+                    </Text>
+                </TouchableOpacity>
             </View>
 
+            {/* 🔹 Filter kategórie */}
             {allCategories.length > 1 && (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
-                    <TouchableOpacity onPress={() => setSelectedCategory(null)} style={[styles.filterItem, selectedCategory === null && styles.activeFilter]}>
+                    <TouchableOpacity
+                        onPress={() => setSelectedCategory(null)}
+                        style={[styles.filterItem, selectedCategory === null && styles.activeFilter]}
+                    >
                         <Text style={styles.season}>Všetky</Text>
                     </TouchableOpacity>
                     {allCategories.map(cat => (
-                        <TouchableOpacity key={cat} onPress={() => setSelectedCategory(cat)} style={[styles.filterItem, selectedCategory === cat && styles.activeFilter]}>
+                        <TouchableOpacity
+                            key={cat}
+                            onPress={() => setSelectedCategory(cat)}
+                            style={[styles.filterItem, selectedCategory === cat && styles.activeFilter]}
+                        >
                             <Text style={styles.season}>{cat}</Text>
                         </TouchableOpacity>
                     ))}
                 </ScrollView>
             )}
 
+            {/* 🔹 Zoznam tréningov */}
             <ScrollView style={{ padding: 20 }}>
                 {selectedCategory === null
-                    ? Object.entries(filteredTrainings.reduce<Record<string, Training[]>>((acc, curr) => {
-                        if (!acc[curr.category_name]) acc[curr.category_name] = [];
-                        acc[curr.category_name].push(curr);
-                        return acc;
-                    }, {})).map(([categoryName, trainings]) => (
+                    ? Object.entries(
+                        filteredTrainings.reduce<Record<string, Training[]>>((acc, curr) => {
+                            if (!acc[curr.category_name]) acc[curr.category_name] = [];
+                            acc[curr.category_name].push(curr);
+                            return acc;
+                        }, {})
+                    ).map(([categoryName, trainings]) => (
                         <View key={categoryName} style={{ marginBottom: 20 }}>
                             <Text style={styles.categoryTitle}>{categoryName}</Text>
                             {trainings.map(renderTrainingCard)}
@@ -170,28 +200,81 @@ export default function TrainingsScreen() {
                     : filteredTrainings.map(renderTrainingCard)}
             </ScrollView>
 
-            <Modal visible={seasonPickerVisible} animationType="fade" transparent>
-                <Pressable style={styles.modalOverlay} onPress={() => setSeasonPickerVisible(false)}>
-                    <Pressable style={styles.pickerModal}>
-                        {allSeasons.map(season => (
-                            <TouchableOpacity key={season} onPress={() => { setSelectedSeason(season); setSeasonPickerVisible(false); }}>
-                                <Text style={[styles.drawerText, season === selectedSeason && { fontWeight: 'bold' }]}>{season}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </Pressable>
-                </Pressable>
-            </Modal>
+{/* 🔹 Modal výber sezóny */}
+<Modal visible={seasonPickerVisible} animationType="fade" transparent>
+    <Pressable style={styles.modalOverlay} onPress={() => setSeasonPickerVisible(false)}>
+        <Pressable style={styles.pickerModal}>
+            {(() => {
+                // 🔹 Vyrob sezóny dynamicky podľa tréningov z API
+                let seasonsFromTrainings = Array.from(
+                    new Set(trainings.map(t => getSeasonLabel(new Date(t.date))))
+                );
 
+                // 🔹 Pridaj aktuálnu a budúcu sezónu vždy
+                const currentSeason = getSeasonLabel(new Date());
+                const nextSeason = getSeasonLabel(new Date(new Date().getFullYear() + 1, 6, 1));
+
+                const allSeasons = Array.from(
+                    new Set([...seasonsFromTrainings, currentSeason, nextSeason])
+                ).sort((a, b) => {
+                    const [aStart] = a.split('/').map(Number);
+                    const [bStart] = b.split('/').map(Number);
+                    return bStart - aStart; // zostupne podľa roku
+                });
+
+                // 🔹 Ak nie sú žiadne tréningy, zobraz aspoň aktuálnu sezónu
+                const displaySeasons = allSeasons.length > 0 ? allSeasons : [currentSeason];
+
+                // 🔹 Pridaj možnosť „Všetky sezóny“
+                const withAllOption = ["Všetky sezóny", ...displaySeasons];
+
+                return withAllOption.map(season => (
+                    <TouchableOpacity
+                        key={season}
+                        onPress={() => {
+                            setSelectedSeason(season === "Všetky sezóny" ? "" : season);
+                            setSeasonPickerVisible(false);
+                            fetchTrainings(season === "Všetky sezóny" ? undefined : season, selectedMonth);
+                        }}
+                    >
+                        <Text
+                            style={[
+                                styles.drawerText,
+                                season === selectedSeason && { fontWeight: "bold" },
+                            ]}
+                        >
+                            {season}
+                        </Text>
+                    </TouchableOpacity>
+                ));
+            })()}
+        </Pressable>
+    </Pressable>
+</Modal>
+
+
+            {/* 🔹 Modal výber mesiaca */}
             <Modal visible={monthPickerVisible} animationType="fade" transparent>
                 <Pressable style={styles.modalOverlay} onPress={() => setMonthPickerVisible(false)}>
                     <Pressable style={styles.pickerModal}>
                         <ScrollView>
-                            <TouchableOpacity onPress={() => { setSelectedMonth(-1); setMonthPickerVisible(false); }}>
-                                <Text style={[styles.drawerText, selectedMonth === -1 && { fontWeight: 'bold' }]}>Všetky</Text>
-                            </TouchableOpacity>
                             {monthIndexes.map((index, idx) => (
-                                <TouchableOpacity key={index} onPress={() => { setSelectedMonth(index); setMonthPickerVisible(false); }}>
-                                    <Text style={[styles.drawerText, selectedMonth === index && { fontWeight: 'bold' }]}>{monthNames[idx]}</Text>
+                                <TouchableOpacity
+                                    key={index}
+                                    onPress={() => {
+                                        setSelectedMonth(index);
+                                        setMonthPickerVisible(false);
+                                        fetchTrainings(selectedSeason, index);
+                                    }}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.drawerText,
+                                            selectedMonth === index && { fontWeight: 'bold' },
+                                        ]}
+                                    >
+                                        {monthNames[idx]}
+                                    </Text>
                                 </TouchableOpacity>
                             ))}
                         </ScrollView>
@@ -231,17 +314,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'center',
         padding: 10,
-        gap: 10,
         backgroundColor: '#fff',
         borderBottomWidth: 1,
         borderColor: '#ccc',
+        gap: 10,
     },
-    categoryTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 10,
-        color: '#000'
-    },
+
     trainingCard: {
         marginBottom: 15,
         padding: 15,
@@ -253,11 +331,32 @@ const styles = StyleSheet.create({
         shadowRadius: 5,
         elevation: 3,
     },
-    trainingTitle: { fontSize: 20, fontWeight: 'bold', color: '#8C1919', marginBottom: 6 },
-    trainingDetail: { color: '#555', marginBottom: 4, fontSize: 17, fontWeight: 'bold' },
-    trainingInfoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, marginTop: 5 },
-    trainingIcon: { fontSize: 16, color: '#D32F2F'},
-    trainingInfo: { fontSize: 16, color: '#333' },
+    trainingTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#8C1919',
+        marginBottom: 6,
+    },
+    trainingDetail: {
+        color: '#555',
+        marginBottom: 4,
+        fontSize: 17,
+        fontWeight: 'bold',
+    },
+    trainingInfoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 10,
+        marginTop: 5,
+    },
+    trainingIcon: {
+        fontSize: 16,
+        color: '#D32F2F',
+    },
+    trainingInfo: {
+        fontSize: 16,
+        color: '#333',
+    },
     modalOverlay: {
         flex: 1,
         justifyContent: 'center',
@@ -290,4 +389,39 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#8C1919',
     },
+    trainingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderColor: '#ddd',
+},
+rowLeft: {
+    flex: 1,
+    marginRight: 10,
+},
+trainingTitleSmall: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#8C1919',
+    marginBottom: 2,
+},
+trainingSubInfo: {
+    fontSize: 13,
+    color: '#555',
+},
+countsSmall: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#8C1919',
+},
+categoryTitle: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: '#000',
+    marginBottom: 6,
+    marginTop: 10,
+},
+
 });

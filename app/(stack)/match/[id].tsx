@@ -211,12 +211,18 @@ export default function MatchDetailScreen() {
                                         <Text style={styles.noPlayer}>– nikto –</Text>
                                     ) : (
                                         players.map((p: any) => (
-                                            <View key={p.user_id} style={styles.playerRow}>
-                                                <Text style={styles.playerNumber}>{p.number || "–"}</Text>
-                                                <Text style={styles.playerName}>
-                                                    {p.name} {p.birth_date ? `(${p.birth_date.slice(6, 10)})` : ""}
-                                                </Text>
+                                        <View key={p.user_id} style={styles.playerRow}>
+                                            <Text style={styles.playerNumber}>{p.number || "–"}</Text>
+
+                                            <View style={{ flex: 1 }}>
+                                            <Text style={styles.playerName}>
+                                                {p.name} {p.birth_date ? `(${p.birth_date.slice(6, 10)})` : ""}
+                                            </Text>
+                                            {p.reason && (
+                                                <Text style={styles.reasonText}>Dôvod: {p.reason}</Text>
+                                            )}
                                             </View>
+                                        </View>
                                         ))
                                     )}
                                 </View>
@@ -409,5 +415,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textDecorationLine: "underline",
     },
-
+    reasonText: {
+    fontSize: 13,
+    color: "#666",
+    fontStyle: "italic",
+    marginTop: 2,
+    },  
 });

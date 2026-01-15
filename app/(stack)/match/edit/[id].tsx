@@ -21,7 +21,7 @@ export default function EditMatchScreen() {
   const router = useRouter();
   const { fetchWithAuth } = useFetchWithAuth();
   const { accessToken } = useContext(AuthContext);
-
+  const [isHome, setIsHome] = useState(false); 
   const [loading, setLoading] = useState(true);
   const [opponent, setOpponent] = useState("");
   const [location, setLocation] = useState("");
@@ -45,6 +45,7 @@ export default function EditMatchScreen() {
         setDescription(data.description || "");
         setVideoLink(data.video_link || "");
         setDate(new Date(data.date));
+        setIsHome(data.is_home ?? false);
       } catch (err) {
         console.error(err);
         Alert.alert("Chyba", "Nepodarilo sa načítať údaje zápasu.");
@@ -66,6 +67,7 @@ export default function EditMatchScreen() {
           description,
           date: date.toISOString(),
           video_link: videoLink,
+          is_home: isHome,
         }),
       });
 
@@ -114,6 +116,21 @@ export default function EditMatchScreen() {
         placeholderTextColor="#888"
         multiline
       />
+      <View style={styles.switchRow}>
+      <TouchableOpacity
+        onPress={() => setIsHome(true)}
+        style={[styles.switchButton, isHome && styles.switchButtonActive]}
+      >
+        <Text style={[styles.switchText, isHome && styles.switchTextActive]}>Doma</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={() => setIsHome(false)}
+        style={[styles.switchButton, !isHome && styles.switchButtonActive]}
+      >
+        <Text style={[styles.switchText, !isHome && styles.switchTextActive]}>Vonku</Text>
+      </TouchableOpacity>
+    </View>
 
       <Text style={styles.label}>Odkaz na video</Text>
       <TextInput
@@ -265,4 +282,31 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 16,
   },
+  switchRow: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  marginVertical: 10,
+},
+switchButton: {
+  flex: 1,
+  alignItems: "center",
+  paddingVertical: 10,
+  marginHorizontal: 5,
+  borderWidth: 1,
+  borderColor: "#ccc",
+  borderRadius: 8,
+  backgroundColor: "#f9f9f9",
+},
+switchButtonActive: {
+  backgroundColor: "#D32F2F",
+  borderColor: "#D32F2F",
+},
+switchText: {
+  fontWeight: "600",
+  color: "#333",
+},
+switchTextActive: {
+  color: "#fff",
+},
+
 });

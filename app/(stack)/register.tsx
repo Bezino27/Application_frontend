@@ -6,6 +6,7 @@ import {
 import { useRouter } from "expo-router";
 import { BASE_URL } from "@/hooks/api";
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Linking from "expo-linking";
 
 interface Club {
     id: number;
@@ -23,6 +24,9 @@ export default function RegisterScreen() {
     const [birthDate, setBirthDate] = useState("");
     const [clubId, setClubId] = useState<number | null>(null);
     const [clubs, setClubs] = useState<Club[]>([]);
+    const [consentGiven, setConsentGiven] = useState(false); // ✅ nový stav
+    const [email, setEmail] = useState("");
+    const [email2, setEmail2] = useState("");
 
     useEffect(() => {
         fetch(`${BASE_URL}/clubs/`)
@@ -35,6 +39,14 @@ export default function RegisterScreen() {
     }, []);
 
     const handleRegister = async () => {
+        if (!consentGiven) {
+            Alert.alert(
+                "Súhlas potrebný",
+                "Pred registráciou je potrebné udeliť súhlas so spracovaním osobných údajov."
+            );
+            return;
+        }
+
         if (!username || !password || !password2 || !firstName || !lastName || !birthDate || !clubId) {
             Alert.alert("Chyba", "Vyplň všetky polia.");
             return;
@@ -63,7 +75,10 @@ export default function RegisterScreen() {
             Alert.alert("Chyba", "Dátum narodenia musí byť vo formáte DD.MM.RRRR");
             return;
         }
-
+        if (!email.includes("@")) {
+            Alert.alert("Chyba", "Zadaj platný email.");
+            return;
+        }
         if (invalidUsername || hasDiacritics) {
             Alert.alert(
                 "Chyba",
@@ -84,6 +99,8 @@ export default function RegisterScreen() {
                     last_name: lastName,
                     birth_date: formattedDate,
                     club_id: clubId,
+                    email,
+                    email_2: email2 || null, // voliteľné
                 }),
             });
 
@@ -125,74 +142,108 @@ export default function RegisterScreen() {
                     <Text style={styles.headerTitle}>Registrácia</Text>
                 </View>
 
-                {/* 🔥 Informačný box */}
                 <View style={styles.infoBox}>
                     <Text style={styles.infoText}>
                         Registráciu je potrebné vykonať s údajmi hráča (dieťaťa) –
                         meno, priezvisko a dátum narodenia patria hráčovi. 
-                        Kontaktné údaje (telefón, email) bude možné doplniť v profile na rodiča.
+                        Pri deťoch prosím minimálne jeden email uvádzajte email rodiča
                     </Text>
                 </View>
 
-                <TextInput
+                {/* formulár */}
+                    <TextInput
                     style={styles.input}
                     placeholder="Meno (hráča)"
-                    placeholderTextColor="#B71C1C"
+                    placeholderTextColor="#555"
                     value={firstName}
                     onChangeText={setFirstName}
-                />
-                <TextInput
+                    />
+                    <TextInput
                     style={styles.input}
                     placeholder="Priezvisko (hráča)"
-                    placeholderTextColor="#B71C1C"
+                    placeholderTextColor="#555"
                     value={lastName}
                     onChangeText={setLastName}
-                />
-                <TextInput
+                    />
+                    <TextInput
                     style={styles.input}
                     placeholder="Dátum narodenia (deň.mesiac.rok)"
-                    placeholderTextColor="#B71C1C"
+                    placeholderTextColor="#555"
                     value={birthDate}
                     onChangeText={setBirthDate}
-                />
-                <TextInput
+                    />
+                    <TextInput
+                    style={styles.input}
+                    placeholder="Email"
+                    placeholderTextColor="#555"
+                    value={email}
+                    onChangeText={setEmail}
+                    />
+
+                    <TextInput
+                    style={styles.input}
+                    placeholder="Alternatívny email (voliteľné)"
+                    placeholderTextColor="#555"
+                    value={email2}
+                    onChangeText={setEmail2}
+                    />
+
+                    <TextInput
                     style={styles.input}
                     placeholder="Používateľské meno"
-                    placeholderTextColor="#B71C1C"
+                    placeholderTextColor="#555"
                     value={username}
                     onChangeText={setUsername}
                     autoCapitalize="none"
-                />
-                <TextInput
+                    />
+                    <TextInput
                     style={styles.input}
                     placeholder="Heslo"
-                    placeholderTextColor="#B71C1C"
+                    placeholderTextColor="#555"
                     secureTextEntry
                     value={password}
                     onChangeText={setPassword}
-                />
-                <TextInput
+                    />
+                    <TextInput
                     style={styles.input}
                     placeholder="Zopakuj heslo"
-                    placeholderTextColor="#B71C1C"
+                    placeholderTextColor="#555"
                     secureTextEntry
                     value={password2}
                     onChangeText={setPassword2}
-                />
+                    />
+
 
                 <Text style={styles.label}>Vyber klub:</Text>
                 {clubs.map(club => (
                     <TouchableOpacity
                         key={club.id}
                         onPress={() => setClubId(club.id)}
-                        style={[
-                            styles.chip,
-                            clubId === club.id && styles.chipSelected
-                        ]}
+                        style={[styles.chip, clubId === club.id && styles.chipSelected]}
                     >
                         <Text style={styles.chipText}>{club.name}</Text>
                     </TouchableOpacity>
                 ))}
+
+                {/* ✅ GDPR súhlas */}
+
+                <TouchableOpacity
+                    style={styles.checkboxContainer}
+                    onPress={() => setConsentGiven(!consentGiven)}
+                >
+                    <View style={[styles.checkbox, consentGiven && styles.checkboxChecked]} />
+                    <Text style={styles.checkboxText}>
+                        Súhlasím so spracovaním osobných údajov podľa{" "}
+                        <Text
+                            style={styles.link}
+                            onPress={() =>
+                                Linking.openURL("https://ludimus.sk/policy")
+                            }
+                        >
+                            zásad ochrany osobných údajov
+                        </Text>.
+                    </Text>
+                </TouchableOpacity>
 
                 <TouchableOpacity onPress={handleRegister} style={styles.button}>
                     <Text style={styles.buttonText}>Zaregistrovať sa</Text>
@@ -202,6 +253,8 @@ export default function RegisterScreen() {
     );
 }
 
+
+
 const screenHeight = Dimensions.get("window").height;
 const isSmallScreen = screenHeight < 700;
 
@@ -209,7 +262,7 @@ const styles = StyleSheet.create({
     container: {
         paddingTop: isSmallScreen ? 30 : 50,
         padding: isSmallScreen ? 15 : 20,
-        backgroundColor: "#f4f4f8",
+        backgroundColor: "#e6e6e6",
         flexGrow: 1,
     },
     header: {
@@ -253,12 +306,13 @@ const styles = StyleSheet.create({
         marginBottom: 10,
         fontSize: isSmallScreen ? 14 : 16,
         fontWeight: "600",
+        
     },
     label: {
         fontSize: isSmallScreen ? 14 : 16,
         fontWeight: "bold",
         marginVertical: isSmallScreen ? 8 : 10,
-        color: "#111"
+        color: "#000"
     },
     chip: {
         backgroundColor: "#ccc",
@@ -287,4 +341,30 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
         fontSize: isSmallScreen ? 15 : 16,
     },
+        checkboxContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginVertical: 15,
+    },
+    checkbox: {
+        width: 22,
+        height: 22,
+        borderRadius: 4,
+        borderWidth: 2,
+        borderColor: "#D32F2F",
+        marginRight: 10,
+        backgroundColor: "#fff",
+    },
+    checkboxChecked: {
+        backgroundColor: "#D32F2F",
+    },
+    checkboxText: {
+        flex: 1,
+        fontSize: 14,
+        color: "#222",
+        lineHeight: 20,
+    },
+    link:{
+        color: "#3726d2ff"
+    }
 });

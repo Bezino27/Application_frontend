@@ -22,6 +22,9 @@ type Player = {
     number?: number;
     birth_date?: string;
     position?: string;
+    reason?:string;
+    responded_at?: string; 
+
 };
 
 type TrainingDetail = {
@@ -80,6 +83,10 @@ export default function TrainingDetailScreen() {
         hour: "2-digit",
         minute: "2-digit",
     });
+
+
+
+
 
     const normalize = (text?: string) =>
         text?.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
@@ -248,24 +255,58 @@ export default function TrainingDetailScreen() {
                                 players.map((p) => {
                                     const colorStyle =
                                         statusKey === "present"
-                                            ? styles.green
-                                            : statusKey === "absent"
-                                                ? styles.red
-                                                : styles.gray;
+                                        ? styles.green
+                                        : statusKey === "absent"
+                                        ? styles.red
+                                        : styles.gray;
 
                                     const year = p.birth_date ? ` (${p.birth_date.slice(0, 4)})` : "";
                                     const number = p.number ? `${p.number}` : "–";
-                                    const position = p.position ? ` ${p.position}` : "";
+
+                                    // 💥 formátovanie dátumu + času
+                                    let formattedTime = null;
+                                    if (p.responded_at) {
+                                        const d = new Date(p.responded_at);
+                                        const date = d.toLocaleDateString("sk-SK", {
+                                        day: "2-digit",
+                                        month: "2-digit",
+                                        year: "numeric",
+                                        });
+                                        const time = d.toLocaleTimeString("sk-SK", {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                        });
+                                        formattedTime = `${date} ${time}`;
+                                    }
 
                                     return (
                                         <View key={p.id} style={styles.playerRow}>
-                                            <Text style={[styles.playerNumber, colorStyle]}>{number}</Text>
+                                        <Text style={[styles.playerNumber, colorStyle]}>{number}</Text>
+                                        <View style={{ flexDirection: "column", marginLeft: 10 }}>
                                             <Text style={[styles.playerName, colorStyle]}>
-                                                {p.name}{year} - {p.position?.slice(0,1)}
+                                            {p.name}
+                                            {year} - {p.position?.slice(0, 1)}
                                             </Text>
+
+
+                                            {/* 💬 dôvod neúčasti pod časom (ak je tréner a hráč bol absent) */}
+                                            {statusKey === "absent" && p.reason && isCoachOfCategory ? (
+                                            <Text style={styles.reason}>{"Dôvod:"}{p.reason}</Text>
+                                            ) : null}
+
+
+                                            {formattedTime && (
+                                            <Text style={styles.timeattedance}>
+                                                {"hlasoval "}{formattedTime}
+                                            </Text>
+                                            )}
+
+
+                                        </View>
                                         </View>
                                     );
-                                })
+                                    })
+
                             )}
                         </View>
                     );
@@ -451,5 +492,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
 },
 
+respondedTimeText: {
+  color: "#555",
+  fontStyle: "italic",
+  fontSize: 13,
+  marginTop: 0,
+},
+
+    timeattedance: {
+        fontSize: 12,
+        marginLeft: 10,
+        color: "#555",
+    },
+
+    reason:{
+        fontSize:14,
+        marginLeft: 10,
+        color: "#555",
+
+    }
 });
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState } from "react";
 import {
     View,
     Text,
@@ -14,7 +14,6 @@ import {
 import { Picker } from "@react-native-picker/picker";
 import { useFetchWithAuth } from "@/hooks/fetchWithAuth";
 import { BASE_URL } from "@/hooks/api";
-import { AuthContext } from "@/context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 
 type Role = {
@@ -43,8 +42,6 @@ export default function AdminUsersScreen() {
     const [users, setUsers] = useState<UserItem[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
-    const { userClub } = useContext(AuthContext);
-    const { userCategories } = useContext(AuthContext);
     const [selectedFilter, setSelectedFilter] = useState<"all" | "none" | "player" | "coach" | "admin">("all");
     const [modalVisible, setModalVisible] = useState(false);
     const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
@@ -135,7 +132,8 @@ export default function AdminUsersScreen() {
             refreshControl={
                 <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#D32F2F" />
             }
-        >            <Text style={styles.header}>Používatelia klubu</Text>
+        > 
+        <Text style={styles.header}>Používatelia klubu</Text>
             <TextInput
                 style={styles.searchInput}
                 placeholder="Hľadaj používateľa podľa mena alebo emailu..."
